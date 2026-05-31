@@ -93,8 +93,9 @@ function renderGrid(container, divisions, options = {}) {
       header.style.mixBlendMode = 'multiply';
       if (exportMode) {
         header.style.fontWeight = '800';
-        header.style.fontSize = '1.1rem';
-        header.style.letterSpacing = '1.5px';
+        header.style.fontSize = '1.3em';
+        header.style.lineHeight = '1em';
+        header.style.letterSpacing = '1.25px';
         header.style.padding = '10px';
       }
       header.dataset.divName = div.name;
