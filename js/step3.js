@@ -218,7 +218,7 @@ async function shareOnTwitter() {
   const inDivision = countInDivisionRivalries(divs);
   const total = TOTAL_RIVALRIES;
   const switches = countLeagueSwitches(divs);
-  const tweetText = `I re-designed the MLB for 2030!\n${inDivision}/${total} rivalries in-division & ${switches} league switches.\n\nThink you can do better? bit.ly/youTryItThen`;
+  const tweetText = `I re-designed the MLB for 2030!\n${inDivision}/${total} rivalries in-division & ${switches} league switches.\n\nThink you can do better? #YouTryItThen`;
 
   const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
 
