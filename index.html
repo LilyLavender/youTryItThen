@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>#YouTryItThen | Redesign the MLB</title>
+  <meta name="description" content="Redesign MLB for 2030. Pick expansion cities, drag teams into 8 new divisions, and share your realignment." />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css" />
+</head>
+<body>
+
+<!-- ── Top bar ─────────────────────────────────────────────── -->
+<div id="top-bar">
+  <div id="brand">#<span>You</span>TryItThen</div>
+  <nav id="step-nav"></nav>
+</div>
+
+<!-- ── Step 1: Current Divisions ────────────────────────────── -->
+<section class="step-section" data-step="1">
+  <div class="narrow-content">
+    <h1 class="step-title">Current MLB Divisions</h1>
+    <p class="step-subtitle">30 teams, 6 divisions, 5 teams each. Hover a team to see its rivalries.</p>
+
+    <div id="step1-grid-area">
+      <div id="step1-grid"></div>
+    </div>
+
+    <div id="step1-map-area" style="margin-top:20px">
+      <div id="step1-map-wrapper" class="map-wrapper"></div>
+    </div>
+
+    <div class="step-nav-row" style="margin-top:28px">
+      <button class="btn-next ready" onclick="APP.goToStep(2)">Start Building ›</button>
+    </div>
+  </div>
+</section>
+
+<!-- ── Step 2: Build ─────────────────────────────────────────── -->
+<section class="step-section" data-step="2" style="display:none">
+
+  <div class="narrow-content">
+    <h1 class="step-title">Build Your Divisions</h1>
+    <p class="step-subtitle">Pick 2 expansion cities, then drag teams into 8 divisions of 4 teams each.</p>
+
+    <!-- City Selector -->
+    <div class="city-selector-card">
+      <div class="city-card-inner">
+        <h3>Choose 2 Expansion Cities</h3>
+        <p>MLB expands to 32 teams by 2030. Which cities get franchises?</p>
+      </div>
+      <div id="city-selector"></div>
+    </div>
+  </div>
+
+  <!-- Builder (shown after confirm) -->
+  <div id="step2-builder" style="display:none">
+
+    <div id="step2-content-layout">
+      <div id="step2-left-col">
+        <div id="step2-grid-area">
+          <div id="step2-grid"></div>
+        </div>
+        <div id="step2-pool-area"></div>
+      </div>
+      <div id="step2-right-col">
+        <div id="step2-map-area">
+          <div id="step2-map-wrapper" class="map-wrapper"></div>
+        </div>
+        <div class="metrics-bar">
+          <div class="metric-item">
+            <div>
+              <div class="metric-label">Rivalries In Same Division</div>
+              <div class="metric-value" id="metric-rivalries">— / —</div>
+              <div class="metric-sub" id="metric-rivalries-note"></div>
+            </div>
+          </div>
+          <div class="metric-item">
+            <div class="metric-label">League Switches</div>
+            <div class="metric-value" id="metric-switches">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="narrow-content">
+      <div class="step-nav-row" style="justify-content:space-between;margin-top:20px">
+        <button class="btn-back" onclick="APP.goToStep(1)">‹ Back</button>
+        <div style="display:flex;gap:10px;align-items:center">
+          <button class="btn-reset" onclick="APP.resetApp()"><i class="fa-solid fa-arrow-rotate-right"></i> Reset</button>
+          <button id="step2-next-btn" class="btn-next" onclick="APP.goToStep(3)" disabled>Finalize & Share ›</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="step2-no-builder" style="margin-top:16px">
+    <div class="narrow-content">
+      <button class="btn-back" onclick="APP.goToStep(1)">‹ Back to Current MLB</button>
+    </div>
+  </div>
+</section>
+
+<!-- ── Step 3: Finalize & Share ──────────────────────────────── -->
+<section class="step-section" data-step="3" style="display:none">
+  <div class="narrow-content">
+    <h1 class="step-title">Your Realignment</h1>
+    <p class="step-subtitle">Let others see your new MLB.</p>
+  </div>
+
+  <div id="step3-content-layout">
+    <div id="step3-left-col">
+      <div id="step3-grid-preview"></div>
+      <div class="step3-actions">
+        <button class="btn-export" onclick="exportGridPNG()"><i class="fa-solid fa-download"></i> Save Grid</button>
+        <button class="btn-share" onclick="shareOnTwitter()">Share on <i class="fa-brands fa-x-twitter"></i></button>
+      </div>
+    </div>
+    <div id="step3-right-col">
+      <div id="step3-map-wrapper" class="map-wrapper"></div>
+      <div class="step3-actions">
+        <button class="btn-export" onclick="exportMapPNG()"><i class="fa-solid fa-download"></i> Save Map</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="narrow-content">
+    <div class="step3-metrics" id="step3-metrics-text"></div>
+    <div class="step-nav-row" style="justify-content:flex-start;margin-top:20px">
+      <button class="btn-back" onclick="APP.goToStep(2)">‹ Back to Builder</button>
+    </div>
+  </div>
+</section>
+
+<!-- ── CDN Libraries ─────────────────────────────────────────── -->
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+<!-- ── App Scripts ────────────────────────────────────────────── -->
+<script src="js/background.js"></script>
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+<script src="js/grid.js"></script>
+<script src="js/map.js"></script>
+<script src="js/step1.js"></script>
+<script src="js/step2.js"></script>
+<script src="js/step3.js"></script>
+
+<!-- ── Footer ─────────────────────────────────────────────────────────── -->
+<footer id="site-footer">
+  <p>© 2026 <a href="https://github.com/LilyLavender">Lily</a>. Not affiliated with or endorsed by Major League Baseball. All MLB team names, logos, and trademarks are the property of their respective owners.</p>
+</footer>
+
+</body>
+</html>
