@@ -95,7 +95,7 @@ async function exportGridPNG() {
     }
 
     ctx.drawImage(gridCanvas, padPx, padPx);
-    downloadCanvas(final, 'YouTryItThen-grid.png');
+    await downloadOrShareCanvas(final, 'YouTryItThen-grid.png');
   } catch (err) {
     console.error('Grid export failed:', err);
   } finally {
@@ -140,20 +140,23 @@ async function exportMapPNG() {
     const url = URL.createObjectURL(blob);
 
     const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = EXPORT_W * 2;
-      canvas.height = EXPORT_H * 2;
-      const ctx = canvas.getContext('2d');
-      ctx.scale(2, 2);
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, EXPORT_W, EXPORT_H);
-      ctx.drawImage(img, 0, 0, EXPORT_W, EXPORT_H);
-      URL.revokeObjectURL(url);
-      downloadCanvas(canvas, 'YouTryItThen-map.png');
-    };
-    img.onerror = () => URL.revokeObjectURL(url);
-    img.src = url;
+    await new Promise((resolve) => {
+      img.onload = async () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = EXPORT_W * 2;
+        canvas.height = EXPORT_H * 2;
+        const ctx = canvas.getContext('2d');
+        ctx.scale(2, 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, EXPORT_W, EXPORT_H);
+        ctx.drawImage(img, 0, 0, EXPORT_W, EXPORT_H);
+        URL.revokeObjectURL(url);
+        await downloadOrShareCanvas(canvas, 'YouTryItThen-map.png');
+        resolve();
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(); };
+      img.src = url;
+    });
   } catch (err) {
     console.error('Map export failed:', err);
   } finally {
@@ -186,7 +189,22 @@ function _imgToDataURL(src) {
   });
 }
 
-function downloadCanvas(canvas, filename) {
+// On mobile, triggers native share sheet (iOS "Save Image" saves to camera roll).
+// On desktop, falls back to anchor-download.
+async function downloadOrShareCanvas(canvas, filename) {
+  const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth < 768;
+  if (isMobile && navigator.share) {
+    try {
+      const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+      const file = new File([blob], filename, { type: 'image/png' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file] });
+        return;
+      }
+    } catch (e) {
+      if (e.name === 'AbortError') return;
+    }
+  }
   const a = document.createElement('a');
   a.download = filename;
   a.href = canvas.toDataURL('image/png');
@@ -200,42 +218,59 @@ async function shareOnTwitter() {
   const inDivision = countInDivisionRivalries(divs);
   const total = TOTAL_RIVALRIES;
   const switches = countLeagueSwitches(divs);
-  const tweetText = `I re-designed the MLB for 2030!
-${inDivision}/${total} rivalries in-division & ${switches} league switches.
-
-Think you can do better? bit.ly/youTryItThen`;
+  const tweetText = `I re-designed the MLB for 2030!\n${inDivision}/${total} rivalries in-division & ${switches} league switches.\n\nThink you can do better? bit.ly/youTryItThen`;
 
   const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
 
-  const el = document.getElementById('step3-grid-preview');
+  // Render at export quality (720px offscreen, same as exportGridPNG).
+  const offscreen = document.createElement('div');
+  offscreen.style.cssText = 'position:fixed;left:-9999px;top:0;width:720px;background:transparent;';
+  document.body.appendChild(offscreen);
+  renderGrid(offscreen, divs, { draggable: false, teamSize: 56, exportMode: true });
+  offscreen.style.gridTemplateColumns = '1fr 1fr';
+
+  const imgs = [...offscreen.querySelectorAll('img')];
+  const origAttrs = imgs.map(img => img.getAttribute('src'));
+  await Promise.all(imgs.map(async (img) => {
+    try { img.src = await _imgToDataURL(img.src); } catch (_) {}
+  }));
+
   let blob = null;
-  if (el) {
-    try {
-      const canvas = await html2canvas(el, { useCORS: true, scale: 2, backgroundColor: '#ffffff' });
-      blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
-    } catch (_) {}
-  }
+  try {
+    const SCALE = 2, PAD = 20;
+    const padPx = PAD * SCALE;
+    const gridCanvas = await html2canvas(offscreen, {
+      scale: SCALE,
+      backgroundColor: null,
+      ignoreElements: (node) => node.tagName === 'IMG' && !node.src.startsWith('data:'),
+    });
+    const final = document.createElement('canvas');
+    final.width  = gridCanvas.width  + padPx * 2;
+    final.height = gridCanvas.height + padPx * 2;
+    const ctx = final.getContext('2d');
+    if (window._bgDraw) {
+      ctx.save(); ctx.scale(SCALE, SCALE);
+      window._bgDraw(ctx, final.width / SCALE, final.height / SCALE, -PAD, -PAD);
+      ctx.restore();
+    }
+    ctx.drawImage(gridCanvas, padPx, padPx);
+    blob = await new Promise(res => final.toBlob(res, 'image/png'));
+  } catch (_) {}
+
+  imgs.forEach((img, i) => { if (origAttrs[i] != null) img.setAttribute('src', origAttrs[i]); });
+  document.body.removeChild(offscreen);
 
   const file = blob ? new File([blob], 'YouTryItThen.png', { type: 'image/png' }) : null;
 
-  // Web Share API: native share sheet on mobile — supports attaching the image directly.
+  // On mobile: Web Share API passes image + text to the Twitter app (or any share target).
+  // On desktop: Twitter intent URLs don't support image attachment, so open with text only.
   if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
     try {
       await navigator.share({ text: tweetText, files: [file] });
       return;
-    } catch (_) {}
-  }
-
-  // Fallback: download the image then open Twitter so it's ready to attach.
-  if (blob) {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'YouTryItThen.png';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (e) {
+      if (e.name === 'AbortError') return;
+    }
   }
 
   window.open(twitterUrl, '_blank', 'noopener');

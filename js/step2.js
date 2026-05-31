@@ -178,7 +178,8 @@ function renderPoolArea() {
 // Lay out pool items in an offset diamond grid (4-3-4-3 honeycomb pattern).
 // Called on initial render and after each drag to keep the layout tidy.
 function _applyPoolGrid(poolEl, teamIds) {
-  const EVEN_COLS = 8, ODD_COLS = 7;
+  const isMobile = window.innerWidth < 720;
+  const EVEN_COLS = isMobile ? 4 : 8, ODD_COLS = isMobile ? 3 : 7;
   const SIZE = 56;
   const HALF = SIZE / 2;        // 28px per half-column
   const ROW_H = Math.round(SIZE * 0.72); // 40px rows overlap slightly for tight packing
@@ -206,7 +207,8 @@ function refreshPoolLayout() {
   const poolEl = document.getElementById('step2-pool');
   if (!poolEl) return;
   const items = [...poolEl.querySelectorAll(':scope > .team-slot')];
-  const EVEN_COLS = 8, ODD_COLS = 7;
+  const isMobile = window.innerWidth < 720;
+  const EVEN_COLS = isMobile ? 4 : 8, ODD_COLS = isMobile ? 3 : 7;
   const SIZE = 56;
   const HALF = SIZE / 2;
   const ROW_H = Math.round(SIZE * 0.72);
