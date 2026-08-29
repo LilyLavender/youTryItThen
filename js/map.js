@@ -15,16 +15,47 @@ function getMapLogoUrl(teamId) {
 let _mapState = null;
 let _mapInstanceCounter = 0;
 
-async function initMap(svgEl, width, height, zoomMult = 1.07) {
+// The three source geo files never change across steps/renders, so fetch them
+// once and reuse the same promise everywhere initMap is called.
+let _geoDataPromise = null;
+function _loadGeoData() {
+  if (!_geoDataPromise) {
+    _geoDataPromise = Promise.all([
+      d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json"),
+      d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/land-50m.json"),
+      d3.json("https://cdn.jsdelivr.net/gh/nvkelso/natural-earth-vector@v5.1.2/geojson/ne_110m_lakes.geojson").catch(() => null),
+    ]);
+  }
+  return _geoDataPromise;
+}
+
+// Default framing: contiguous US with a little room above the 49th parallel.
+// extraPoints (expansion-city {lat,lng} picks) push these corners outward only
+// when a pick actually falls outside them, so a Charlotte/Austin-only roster
+// looks exactly like it always has.
+const NEAR_BOUNDS = { north: 50, south: 22, west: -125, east: -66.5 };
+const FAR_MARGIN = 3; // degrees of breathing room around any far-flung pick
+
+function _computeFitBounds(extraPoints = []) {
+  let { north, south, west, east } = NEAR_BOUNDS;
+  extraPoints.forEach(p => {
+    if (p == null || p.lat == null || p.lng == null) return;
+    north = Math.max(north, p.lat + FAR_MARGIN);
+    south = Math.min(south, p.lat - FAR_MARGIN);
+    west  = Math.min(west,  p.lng - FAR_MARGIN);
+    east  = Math.max(east,  p.lng + FAR_MARGIN);
+  });
+  const expanded = north > NEAR_BOUNDS.north || south < NEAR_BOUNDS.south ||
+                   west < NEAR_BOUNDS.west || east > NEAR_BOUNDS.east;
+  return { north, south, west, east, expanded };
+}
+
+async function initMap(svgEl, width, height, zoomMult = 1.07, extraPoints = []) {
   const maskId = `land-mask-${++_mapInstanceCounter}`;
   const svg = d3.select(svgEl);
   svg.selectAll('*').remove();
 
-  const [topo, landTopo, lakesGeo] = await Promise.all([
-    d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json"),
-    d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/land-50m.json"),
-    d3.json("https://cdn.jsdelivr.net/gh/nvkelso/natural-earth-vector@v5.1.2/geojson/ne_110m_lakes.geojson").catch(() => null),
-  ]);
+  const [topo, landTopo, lakesGeo] = await _loadGeoData();
   const countries = topojson.feature(topo, topo.objects.countries);
   const northAmerica = {
     type: "FeatureCollection",
@@ -36,24 +67,29 @@ async function initMap(svgEl, width, height, zoomMult = 1.07) {
     .rotate([96, 0])
     .parallels([29.5, 45.5]);
 
-  // Fit to the four corners of the contiguous US + just above the 49th parallel.
-  // Using MultiPoint lets d3 handle the Albers distortion correctly.
+  // Fit to the four corners of the near (CONUS) box, expanded outward if any
+  // expansion pick (Mexico, the Caribbean, or western/northern Canada) falls
+  // outside it. Using MultiPoint lets d3 handle the Albers distortion correctly.
+  const bounds = _computeFitBounds(extraPoints);
   const fitBounds = {
     type: "Feature",
     geometry: {
       type: "MultiPoint",
       coordinates: [
-        [-125, 22], [-66.5, 22],  // southern corners (22°N gives room below Miami after zoom)
-        [-125, 50], [-66.5, 50],  // northern corners (50°N keeps 49th parallel near top)
+        [bounds.west, bounds.south], [bounds.east, bounds.south],
+        [bounds.west, bounds.north], [bounds.east, bounds.north],
       ]
     }
   };
   projection.fitSize([width, height], fitBounds);
   // Scale up after the initial fit; shift up proportionally so Miami stays in frame.
-  projection.scale(projection.scale() * zoomMult);
-  if (zoomMult > 1) {
+  // Skip the extra crop once bounds already had to expand, or a far pick would
+  // just get cropped straight back out.
+  const effectiveZoomMult = bounds.expanded ? Math.min(zoomMult, 1.0) : zoomMult;
+  projection.scale(projection.scale() * effectiveZoomMult);
+  if (effectiveZoomMult > 1) {
     const [tx, ty] = projection.translate();
-    projection.translate([tx, ty - Math.round(height * 0.04 * (zoomMult / 1.07))]);
+    projection.translate([tx, ty - Math.round(height * 0.04 * (effectiveZoomMult / 1.07))]);
   }
 
   const pathGen = d3.geoPath().projection(projection);
@@ -175,7 +211,7 @@ function renderMapTeams(teamsWithDivisions, divisions) {
         .attr("fill", "#fff").attr("font-size", `${diamondTextSize}px`).attr("font-weight", "bold")
         .attr("font-family", "system-ui, -apple-system, sans-serif")
         .attr("transform", "translateY(1px)")
-        .text(team.city ? team.city.slice(0, 3).toUpperCase() : team.id);
+        .text(team.mapAbbr || (team.city ? team.city.slice(0, 3).toUpperCase() : team.id));
     }
 
     g.on("mouseenter", function(event) {
@@ -359,10 +395,10 @@ function updateMapDivisions(divisions) {
 
 function buildTeamsForMap(divisions) {
   const result = [];
-  const oakCoords = getAthleticsCoords(!!divisions);
+  const athCoords = getAthleticsCoords(!!divisions);
   TEAMS.forEach(t => {
-    if (t.id === 'OAK') {
-      result.push({ ...t, lat: oakCoords.lat, lng: oakCoords.lng, city: oakCoords.city });
+    if (t.id === 'ATH') {
+      result.push({ ...t, lat: athCoords.lat, lng: athCoords.lng, city: athCoords.city });
     } else {
       result.push(t);
     }
@@ -372,6 +408,7 @@ function buildTeamsForMap(divisions) {
   if (APP.expansionTeamMap && divisions) {
     APP.expansionTeamMap.forEach(exp => result.push(exp));
   }
+
   return result;
 }
 

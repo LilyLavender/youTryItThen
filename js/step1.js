@@ -40,7 +40,7 @@ async function renderStep1Map() {
   }
 
   const teams1 = buildTeamsForMap(null).map(t => {
-    if (t.id === 'OAK') {
+    if (t.id === 'ATH') {
       const coords = getAthleticsCoords(false);
       return { ...t, lat: coords.lat, lng: coords.lng, city: coords.city };
     }

@@ -35,6 +35,7 @@ window.APP = {
         secondaryColor: "#cccccc",
         isExpansion: true,
         expansionCityId: city.id,
+        mapAbbr: city.mapAbbr,
       };
       this.expansionTeamMap.set(expTeam.id, expTeam);
     });

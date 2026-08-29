@@ -11,7 +11,7 @@ const NL_DIV_HEADER_BG = "rgba(0,57,166,0.50)";
 const AL_DIV_COLORS = ["#c0392b","#e74c3c","#e95d4c","#f07066"];
 const NL_DIV_COLORS = ["#1a5276","#2980b9","#3498db","#5dade2"];
 
-const DARK_LOGO_TEAMS = new Set(['atl','cin','cle','col','det','hou','kc','lad','min','nyy','oak','phi','stl','tb','tex','wsh']);
+const DARK_LOGO_TEAMS = new Set(['atl','ath','cin','cle','col','det','hou','kc','lad','min','nyy','phi','stl','tb','tex','wsh']);
 
 function getLocalLogoUrl(teamId, dark = false) {
   const id = teamId.toLowerCase();

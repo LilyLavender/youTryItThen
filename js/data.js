@@ -13,7 +13,7 @@ const TEAMS = [
   { id: "KC",  name: "Kansas City Royals",    lat: 39.05, lng: -94.48, league: "AL", division: "Central", mlbId: 118, primaryColor: "#004687", secondaryColor: "#ffffff" },
   // AL West
   { id: "HOU", name: "Houston Astros",        lat: 29.76, lng: -95.36, league: "AL", division: "West",    mlbId: 117, primaryColor: "#002D62", secondaryColor: "#EB6E1F" },
-  { id: "OAK", name: "Athletics",             lat: null,  lng: null,   league: "AL", division: "West",    mlbId: 133, primaryColor: "#003831", secondaryColor: "#EFB21E" },
+  { id: "ATH", name: "Athletics",             lat: null,  lng: null,   league: "AL", division: "West",    mlbId: 133, primaryColor: "#003831", secondaryColor: "#EFB21E" },
   { id: "LAA", name: "Los Angeles Angels",    lat: 34.35, lng: -116.88,league: "AL", division: "West",    mlbId: 108, primaryColor: "#BA0021", secondaryColor: "#ffffff" },
   { id: "SEA", name: "Seattle Mariners",      lat: 47.59, lng: -122.33,league: "AL", division: "West",    mlbId: 136, primaryColor: "#0C2C56", secondaryColor: "#005C5C" },
   { id: "TEX", name: "Texas Rangers",         lat: 32.75, lng: -97.08, league: "AL", division: "West",    mlbId: 140, primaryColor: "#003278", secondaryColor: "#C0111F" },
@@ -49,8 +49,8 @@ const RIVALRIES = [
   { teams: ["MIN","CLE"],   inDivision: true  },
   { teams: ["DET","CLE"],   inDivision: true  },
   { teams: ["HOU","TEX"],   inDivision: true  },
-  { teams: ["SEA","OAK"],   inDivision: true  },
-  { teams: ["LAA","OAK"],   inDivision: true  },
+  { teams: ["SEA","ATH"],   inDivision: true  },
+  { teams: ["LAA","ATH"],   inDivision: true  },
   { teams: ["HOU","SEA"],   inDivision: true  },
   { teams: ["ATL","NYM"],   inDivision: true  },
   { teams: ["ATL","PHI"],   inDivision: true  },
@@ -76,7 +76,7 @@ const RIVALRIES = [
   { teams: ["NYY","NYM"],   inDivision: false },
   { teams: ["CHC","CWS"],   inDivision: false },
   { teams: ["LAD","LAA"],   inDivision: false },
-  { teams: ["SF","OAK"],    inDivision: false },
+  { teams: ["SF","ATH"],    inDivision: false },
   { teams: ["STL","KC"],    inDivision: false },
   { teams: ["BAL","WSH"],   inDivision: false },
   { teams: ["MIA","TB"],    inDivision: false },
@@ -88,17 +88,52 @@ const RIVALRIES = [
 ];
 
 const EXPANSION_CITIES = [
-  { id: "AUS", city: "Austin",          state: "TX", lat: 30.27, lng: -97.74  },
-  { id: "BUF", city: "Buffalo",         state: "NY", lat: 42.59, lng: -78.49  },
-  { id: "CHA", city: "Charlotte",       state: "NC", lat: 35.23, lng: -80.84  },
-  { id: "MTL", city: "Montreal",        state: "QC", lat: 45.51, lng: -73.56  },
-  { id: "NSH", city: "Nashville",       state: "TN", lat: 36.17, lng: -86.78  },
-  { id: "ORL", city: "Orlando",         state: "FL", lat: 28.84, lng: -80.98  },
-  { id: "POR", city: "Portland",        state: "OR", lat: 45.52, lng: -122.68 },
-  { id: "RAL", city: "Raleigh",         state: "NC", lat: 35.78, lng: -78.64  },
-  { id: "SAC", city: "Sacramento",      state: "CA", lat: 38.73, lng: -121.30 },
-  { id: "UTA", city: "Salt Lake City",  state: "UT", lat: 40.76, lng: -111.89 },
-  { id: "VAN", city: "Vancouver",       state: "BC", lat: 49.28, lng: -121.62 },
+  // --- Likely tier: shown by default (Wikipedia-sourced shortlist) ---
+  { id: "AUS", city: "Austin",          state: "TX", country: "US", tier: "likely", lat: 30.27, lng: -97.74  },
+  { id: "BUF", city: "Buffalo",         state: "NY", country: "US", tier: "likely", lat: 42.59, lng: -78.49  },
+  { id: "CHA", city: "Charlotte",       state: "NC", country: "US", tier: "likely", lat: 35.23, lng: -80.84  },
+  { id: "MTL", city: "Montreal",        state: "QC", country: "CA", tier: "likely", lat: 45.51, lng: -73.56  },
+  { id: "NSH", city: "Nashville",       state: "TN", country: "US", tier: "likely", lat: 36.17, lng: -86.78  },
+  { id: "ORL", city: "Orlando",         state: "FL", country: "US", tier: "likely", lat: 28.84, lng: -80.98  },
+  { id: "POR", city: "Portland",        state: "OR", country: "US", tier: "likely", lat: 45.52, lng: -122.68 },
+  { id: "RAL", city: "Raleigh",         state: "NC", country: "US", tier: "likely", lat: 35.78, lng: -78.64  },
+  { id: "SAC", city: "Sacramento",      state: "CA", country: "US", tier: "likely", lat: 38.73, lng: -121.30 },
+  { id: "UTA", city: "Salt Lake City",  state: "UT", country: "US", tier: "likely", lat: 40.76, lng: -111.89 },
+  { id: "VAN", city: "Vancouver",       state: "BC", country: "CA", tier: "likely", lat: 49.28, lng: -121.62 },
+
+  // --- More tier: revealed via "+ More cities" as one flat "Other cities" list,
+  // alphabetized by city. Ids match each city's real-world sports tricode (its
+  // NFL/NBA/NHL/MLS team, or the closest well-known equivalent for cities with
+  // no major league team), checked against every other id here and in TEAMS so
+  // nothing collides. `mapAbbr` overrides the default city.slice(0,3) label used
+  // for the diamond placeholder on the map, for cities where that default reads
+  // wrong (e.g. "Jacksonville".slice(0,3) = "JAC", not the Jaguars' actual "JAX").
+  // Mexico & Caribbean entries show state as country code to avoid clashing
+  // abbreviations (Tijuana's Baja California = "BC", same as Vancouver's British
+  // Columbia; Monterrey's Nuevo León = "NL", same as Newfoundland and Labrador).
+  { id: "BHM",  city: "Birmingham",     state: "AL", country: "US", tier: "more", lat: 33.52, lng: -86.81   }, // common airport/broadcast shorthand
+  { id: "CGY",  city: "Calgary",        state: "AB", country: "CA", tier: "more", lat: 51.05, lng: -114.07  }, // NHL Flames
+  { id: "CLB",  city: "Columbus",       state: "OH", country: "US", tier: "more", lat: 39.96, lng: -83.00,  mapAbbr: "CLB" }, // MLS Crew
+  { id: "EDM",  city: "Edmonton",       state: "AB", country: "CA", tier: "more", lat: 53.55, lng: -113.49  }, // NHL Oilers
+  { id: "ELP",  city: "El Paso",        state: "TX", country: "US", tier: "more", lat: 31.76, lng: -106.49, mapAbbr: "ELP" }, // AAA Chihuahuas
+  { id: "HAL",  city: "Halifax",        state: "NS", country: "CA", tier: "more", lat: 44.65, lng: -63.57   }, // QMJHL Mooseheads
+  { id: "IND",  city: "Indianapolis",   state: "IN", country: "US", tier: "more", lat: 39.77, lng: -86.16   }, // NFL Colts / NBA Pacers
+  { id: "JAX",  city: "Jacksonville",   state: "FL", country: "US", tier: "more", lat: 30.33, lng: -81.66,  mapAbbr: "JAX" }, // NFL Jaguars
+  { id: "LOU",  city: "Louisville",     state: "KY", country: "US", tier: "more", lat: 38.25, lng: -85.76   }, // NCAA Cardinals / AAA Bats
+  { id: "MEM",  city: "Memphis",        state: "TN", country: "US", tier: "more", lat: 35.15, lng: -90.05   }, // NBA Grizzlies
+  { id: "MEX",  city: "Mexico City",    state: "MX", country: "MX", tier: "more", lat: 19.43, lng: -99.13   }, // standard Mexico sports shorthand
+  { id: "MTY",  city: "Monterrey",      state: "MX", country: "MX", tier: "more", lat: 25.69, lng: -100.32  }, // Liga MX Rayados/Tigres
+  { id: "NOLA", city: "New Orleans",    state: "LA", country: "US", tier: "more", lat: 29.95, lng: -90.07,  mapAbbr: "NO" }, // common shorthand (Saints=NO, Pelicans=NOP)
+  { id: "OKC",  city: "Oklahoma City",  state: "OK", country: "US", tier: "more", lat: 35.47, lng: -97.52,  mapAbbr: "OKC" }, // NBA Thunder
+  { id: "OMA",  city: "Omaha",          state: "NE", country: "US", tier: "more", lat: 41.26, lng: -95.94   }, // NCAA/College World Series shorthand
+  { id: "OTT",  city: "Ottawa",         state: "ON", country: "CA", tier: "more", lat: 45.42, lng: -75.70   }, // NHL Senators
+  { id: "QUE",  city: "Quebec City",    state: "QC", country: "CA", tier: "more", lat: 46.81, lng: -71.21   }, // former NHL Nordiques
+  { id: "SAS",  city: "San Antonio",    state: "TX", country: "US", tier: "more", lat: 29.42, lng: -98.49   }, // NBA Spurs
+  { id: "SJU",  city: "San Juan",       state: "PR", country: "PR", tier: "more", lat: 18.40, lng: -66.06,  mapAbbr: "SJU" }, // used for MLB's 2003-04 Expos "home" games there
+  { id: "SDQ",  city: "Santo Domingo",  state: "DR", country: "DO", tier: "more", lat: 18.49, lng: -69.93,  mapAbbr: "DOM" }, // standard airport/city shorthand
+  { id: "SAV",  city: "Savannah",       state: "GA", country: "US", tier: "more", lat: 32.08, lng: -81.09   }, // Savannah Bananas
+  { id: "TIJ",  city: "Tijuana",        state: "MX", country: "MX", tier: "more", lat: 32.51, lng: -117.02  }, // Liga MX Xolos
+  { id: "WPG",  city: "Winnipeg",       state: "MB", country: "CA", tier: "more", lat: 49.90, lng: -97.14   }, // NHL Jets
 ];
 
 // Per-logo nudges inside the diamond. Keys are team IDs (uppercase).
@@ -115,7 +150,7 @@ const LOGO_TWEAKS = {
   CLE:  { dx: 0, dy: 1, scale: 1.1 },
   KC:   { dx: 0, dy: 0, scale: 0.9 },
   HOU:  { dx: -3, dy: -3, scale: 1.2 },
-  OAK:  { dx: -2, dy: -3, scale: 1.1 },
+  ATH:  { dx: -2, dy: -3, scale: 1.1 },
   LAA:  { dx: -3, dy: -3, scale: 1.1 },
   SEA:  { dx: -1, dy: -1, scale: 1.1 },
   TEX:  { dx: 2, dy: 2, scale: 1.0 },

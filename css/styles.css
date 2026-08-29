@@ -403,6 +403,21 @@ body {
 .city-pill.selected:hover { background: #444; border-color: #444; }
 .city-pill.disabled { opacity: 0.35; cursor: not-allowed; }
 
+.city-pill-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.more-cities-toggle { border-style: dashed; color: #777; }
+.more-cities-toggle:hover { border-color: #999; color: #111; background: #f8f8f8; }
+
+.more-cities-panel { margin-top: 12px; }
+.more-cities-group-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #999;
+  margin-bottom: 6px;
+}
+.more-cities-group-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+
 /* ── Step 2 two-column layout (grid+pool left, map right) ──────────────── */
 #step2-content-layout {
   display: grid;

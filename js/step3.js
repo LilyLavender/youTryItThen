@@ -30,7 +30,9 @@ async function renderStep3Map() {
   wrapper.appendChild(svgEl);
 
   _mapState = null;
-  const s3State = await initMap(svgEl, w, h);
+  const isMobile = window.innerWidth < 768;
+  const extraPoints = APP.step2State.expansionCities.map(c => ({ lat: c.lat, lng: c.lng }));
+  const s3State = await initMap(svgEl, w, h, isMobile ? 1.07 : 1.15, extraPoints);
   _mapState = s3State;
   updateMapDivisions(APP.step2State.divisions);
 }
@@ -122,7 +124,8 @@ async function exportMapPNG() {
   wrapper.appendChild(svgEl);
 
   _mapState = null;
-  await initMap(svgEl, EXPORT_W, EXPORT_H);
+  const extraPoints = APP.step2State.expansionCities.map(c => ({ lat: c.lat, lng: c.lng }));
+  await initMap(svgEl, EXPORT_W, EXPORT_H, 1.15, extraPoints);
   updateMapDivisions(APP.step2State.divisions);
 
   // Clone synchronously while the SVG is fully rendered and in the DOM

@@ -25,6 +25,12 @@ function step2Show() {
 
 // ── City Selector ────────────────────────────────────────────────────────────
 
+let _moreCitiesExpanded = false;
+
+function cityPillLabel(city) {
+  return city.state ? `${city.city}, ${city.state}` : city.city;
+}
+
 function renderCitySelector() {
   const container = document.getElementById('city-selector');
   if (!container) return;
@@ -36,27 +42,56 @@ function renderCitySelector() {
     container.style.marginBottom = '0';
     const pills = EXPANSION_CITIES
       .filter(c => chosen.includes(c.id))
-      .map(c => {
-        const label = c.state ? `${c.city}, ${c.state}` : c.city;
-        return `<button class="city-pill selected" onclick="toggleCity('${c.id}')">${label} ✕</button>`;
-      }).join('');
+      .map(c => `<button class="city-pill selected" onclick="toggleCity('${c.id}')">${cityPillLabel(c)} ✕</button>`)
+      .join('');
     container.innerHTML = `<span class="city-confirm-label">Expansion teams:</span>${pills}`;
     return;
   }
 
   if (card) card.classList.remove('city-card-confirmed');
   container.style.marginBottom = '16px';
-  container.innerHTML = EXPANSION_CITIES.map(city => {
+
+  const likelyPills = EXPANSION_CITIES.filter(c => c.tier === 'likely').map(city => {
     const isChosen = chosen.includes(city.id);
     const isDisabled = !isChosen && chosen.length >= 2;
-    const label = city.state ? `${city.city}, ${city.state}` : city.city;
     return `<button
       class="city-pill ${isChosen ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}"
       data-city-id="${city.id}"
       ${isDisabled ? 'disabled' : ''}
       onclick="toggleCity('${city.id}')"
-    >${label}</button>`;
+    >${cityPillLabel(city)}</button>`;
   }).join('');
+
+  const moreCities = EXPANSION_CITIES.filter(c => c.tier === 'more')
+    .sort((a, b) => a.city.localeCompare(b.city));
+  const toggleLabel = _moreCitiesExpanded ? '− Fewer cities' : `+ More cities (${moreCities.length})`;
+  const toggleBtn = `<button type="button" class="city-pill more-cities-toggle" onclick="toggleMoreCities()">${toggleLabel}</button>`;
+
+  let morePanel = '';
+  if (_moreCitiesExpanded) {
+    const pills = moreCities.map(city => {
+      const isChosen = chosen.includes(city.id);
+      const isDisabled = !isChosen && chosen.length >= 2;
+      return `<button
+        class="city-pill ${isChosen ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}"
+        data-city-id="${city.id}"
+        ${isDisabled ? 'disabled' : ''}
+        onclick="toggleCity('${city.id}')"
+      >${cityPillLabel(city)}</button>`;
+    }).join('');
+
+    morePanel = `<div class="more-cities-panel">
+      <div class="more-cities-group-label">Other cities</div>
+      <div class="more-cities-group-pills">${pills}</div>
+    </div>`;
+  }
+
+  container.innerHTML = `<div class="city-pill-row">${likelyPills}${toggleBtn}</div>${morePanel}`;
+}
+
+function toggleMoreCities() {
+  _moreCitiesExpanded = !_moreCitiesExpanded;
+  renderCitySelector();
 }
 
 function toggleCity(cityId) {
@@ -83,14 +118,23 @@ function toggleCity(cityId) {
     if (firstTime) {
       showBuilder();
     } else {
-      // Just refresh grid/pool in place so expansion team name/city updates
+      // Just refresh grid/pool in place so expansion team name/city updates.
+      // Force the map to rebuild too, since the new cities may need different
+      // projection bounds (e.g. swapping in/out a Mexico or Caribbean pick).
       renderStep2Grid();
       renderPoolArea();
+      _step2MapInited = false;
       renderStep2Map();
     }
   } else {
-    // Fewer than 2 cities - expand the selector back, keep builder visible
+    // Fewer than 2 cities - expand the selector back, keep builder visible.
+    // The grid/division layout is intentionally preserved (per the comment
+    // above), but the map and pool both reflect the *current* roster live from
+    // expansionTeamMap, so clear them rather than leaving a picked-then-removed
+    // city's marker/pool entry on screen until a replacement is confirmed.
     renderCitySelector();
+    renderPoolArea();
+    renderStep2Map();
   }
 }
 
@@ -120,7 +164,13 @@ function renderStep2Grid() {
 
 function renderPoolArea() {
   const poolArea = document.getElementById('step2-pool-area');
-  if (!poolArea || !APP.step2State.confirmed) return;
+  if (!poolArea) return;
+  if (!APP.step2State.confirmed || APP.step2State.expansionCities.length !== 2) {
+    // Don't leave a previous confirmation's pool on screen once unconfirmed.
+    if (_poolSortable) { _poolSortable.destroy(); _poolSortable = null; }
+    poolArea.innerHTML = '';
+    return;
+  }
   poolArea.innerHTML = '';
 
   // Collect already-assigned teams
@@ -238,7 +288,15 @@ function onStep2Change() {
 
 async function renderStep2Map() {
   const wrapper = document.getElementById('step2-map-wrapper');
-  if (!wrapper || !APP.step2State.confirmed) return;
+  if (!wrapper) return;
+  if (!APP.step2State.confirmed || APP.step2State.expansionCities.length !== 2) {
+    // Don't leave a previous confirmation's map frozen on screen while the
+    // city picker is reopened (0/1 selected) or unconfirmed.
+    wrapper.innerHTML = '';
+    _step2MapInited = false;
+    _step2MapState = null;
+    return;
+  }
 
   if (!_step2MapInited) {
     wrapper.innerHTML = '<div class="map-loading">Loading map…</div>';
@@ -253,7 +311,8 @@ async function renderStep2Map() {
     wrapper.innerHTML = '';
     wrapper.appendChild(svgEl);
     _mapState = null;
-    _step2MapState = await initMap(svgEl, w, h, isMobile ? 1.07 : 1.15);
+    const extraPoints = APP.step2State.expansionCities.map(c => ({ lat: c.lat, lng: c.lng }));
+    _step2MapState = await initMap(svgEl, w, h, isMobile ? 1.07 : 1.15, extraPoints);
     _step2MapInited = true;
   } else {
     _mapState = _step2MapState;
