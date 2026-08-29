@@ -15,7 +15,7 @@ const DARK_LOGO_TEAMS = new Set(['atl','ath','cin','cle','col','det','hou','kc',
 
 function getLocalLogoUrl(teamId, dark = false) {
   const id = teamId.toLowerCase();
-  return dark && DARK_LOGO_TEAMS.has(id) ? `img/${id}-dark.png` : `img/${id}.png`;
+  return dark && DARK_LOGO_TEAMS.has(id) ? `img/logos/${id}-dark.png` : `img/logos/${id}.png`;
 }
 
 function adjustHexColor(hex, amount) {

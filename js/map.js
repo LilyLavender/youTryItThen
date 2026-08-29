@@ -9,7 +9,7 @@ const MAP_AL_COLORS_3 = ["rgba(208,2,27,0.28)","rgba(208,2,27,0.42)","rgba(208,2
 const MAP_NL_COLORS_3 = ["rgba(0,57,166,0.28)","rgba(0,57,166,0.42)","rgba(0,57,166,0.58)"];
 
 function getMapLogoUrl(teamId) {
-  return `img/${teamId.toLowerCase()}.png`;
+  return `img/logos/${teamId.toLowerCase()}.png`;
 }
 
 let _mapState = null;

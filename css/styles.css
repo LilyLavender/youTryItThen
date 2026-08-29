@@ -16,6 +16,8 @@ body {
   background: transparent;
   min-height: 100vh;
   color: #1a1a1a;
+  display: flex;
+  flex-direction: column;
 }
 
 /* ── Nav ───────────────────────────────────────────────────────────── */
@@ -703,12 +705,49 @@ body {
   padding: 18px 20px;
   background: rgba(255,255,255,0.2);
   backdrop-filter: blur(6px);
-  margin-top: 40px;
+  margin-top: auto;
+  padding-top: 40px;
   font-size: 0.75rem;
   color: #aaa;
   line-height: 1.7;
 }
 
+#site-footer p + p {
+  margin-top: 10px;
+}
+
 #site-footer a {
   color: black !important;
+}
+
+.footer-contact-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  text-decoration: none;
+}
+
+.footer-contact-link + .footer-contact-link {
+  margin-left: 20px;
+}
+
+.footer-contact-link span {
+  text-decoration: underline;
+}
+
+.footer-kofi-icon {
+  height: 12px;
+  width: auto;
+}
+
+/* ── Step 3 Ko-fi ───────────────────────────────────────────────────── */
+.step3-kofi-link {
+  display: flex;
+  align-items: center;
+}
+
+.step3-kofi-link img {
+  height: 36px;
+  width: auto;
+  border: 0;
 }
