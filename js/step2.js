@@ -223,8 +223,10 @@ function renderPoolArea() {
     animation: 150,
     ghostClass: 'drag-ghost',
     dragClass: 'drag-active',
+    onStart() { setGridDragging(true); },
     onChange() { refreshPoolLayout(); },
     onEnd() {
+      setGridDragging(false);
       syncDivisionsFromDOM();
       onStep2Change();
     },
@@ -328,6 +330,21 @@ async function renderStep2Map() {
 }
 
 // ── Metrics ───────────────────────────────────────────────────────────────────
+
+// Maps each placed team id to a division key unique across leagues (division
+// names can repeat between AL/NL, e.g. both have an "East"), so same-name
+// divisions in different leagues never look like a shared division.
+function getCurrentTeamDivisionMap() {
+  const divisions = APP.step2State.divisions;
+  const teamDiv = new Map();
+  if (!divisions) return teamDiv;
+  ['AL', 'NL'].forEach(league => {
+    divisions[league].forEach(div => {
+      div.teams.forEach(id => teamDiv.set(id, `${league}:${div.name}`));
+    });
+  });
+  return teamDiv;
+}
 
 function countInDivisionRivalries(divisions) {
   if (!divisions) return 0;

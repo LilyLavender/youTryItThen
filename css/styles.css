@@ -287,7 +287,7 @@ body {
 }
 .tooltip-rivals {
   display: flex;
-  gap: 6px;
+  gap: 10px;
   flex-wrap: wrap;
   justify-content: center;
 }
@@ -318,6 +318,19 @@ body {
 /* ── Drag ghost ─────────────────────────────────────────────────────── */
 .drag-ghost { opacity: 0.35; }
 .drag-active { transform: scale(1.08); box-shadow: 0 12px 32px rgba(0,0,0,0.2); }
+
+/* ── Rival tooltip: preserved vs. broken division status (step 2) ────── */
+/* Solid square-ish rings, distinguished by color only (both solid, no dashing).
+   .tooltip-rivals gap keeps neighboring rings from touching. */
+/* Built entirely from box-shadow (no outline) so every layer follows the same
+   border-radius calculation — outline's own corner-radius approximation
+   doesn't quite line up with a plain background's corners, leaving slivers
+   of the tooltip's white showing through at the rounded corners. Layering:
+   first shadow (2px, translucent) bridges the box edge outward and is drawn
+   on top; second shadow (5px, solid) is fully covered by the first out to
+   2px, so only the 2px-5px band shows through as the solid ring. */
+.rival-preserved { border-radius: 2px; background: rgba(19,150,2,0.2); box-shadow: 0 0 0 2px rgba(19,150,2,0.2), 0 0 0 3px #139602; }
+.rival-broken { border-radius: 2px; background: rgba(227,11,11,0.2); box-shadow: 0 0 0 2px rgba(227,11,11,0.2), 0 0 0 3px #e30b0b; }
 
 /* ── League-switch ring ─────────────────────────────────────────────── */
 .team-slot[data-league-switched="AL"] .diamond { outline: 3px solid var(--al); outline-offset: 3px; }

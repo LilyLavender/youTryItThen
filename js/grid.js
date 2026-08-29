@@ -143,7 +143,9 @@ function renderGrid(container, divisions, options = {}) {
           animation: 150,
           ghostClass: 'drag-ghost',
           dragClass: 'drag-active',
+          onStart() { setGridDragging(true); },
           onEnd() {
+            setGridDragging(false);
             syncDivisionsFromDOM();
             if (onDragEnd) onDragEnd();
             APP._renderNav();
@@ -207,13 +209,12 @@ function makeDiamondSlot(teamId, size = 56, draggable = false) {
     wrapper.appendChild(makeExpansionPlaceholder(team, size));
   }
 
-  if (!draggable) {
-    wrapper.addEventListener('mouseenter', () => showRivalTooltip(wrapper, teamId));
-    wrapper.addEventListener('mouseleave', () => hideRivalTooltip());
-    wrapper.addEventListener('click', () => {
-      if (window.innerWidth < 768) toggleMobileRivals(wrapper, teamId);
-    });
-  }
+  if (draggable) wrapper.dataset.dynamicRivals = '1';
+  wrapper.addEventListener('mouseenter', () => showRivalTooltip(wrapper, teamId));
+  wrapper.addEventListener('mouseleave', () => hideRivalTooltip());
+  wrapper.addEventListener('click', () => {
+    if (window.innerWidth < 768) toggleMobileRivals(wrapper, teamId);
+  });
 
   return wrapper;
 }
@@ -315,8 +316,15 @@ function makeLogoOnly(teamId, size = 36) {
 // Rival tooltip (desktop hover)
 let _tooltipEl = null;
 let _tooltipTimeout = null;
+let _gridDragging = false;
+
+function setGridDragging(v) {
+  _gridDragging = v;
+  if (v) hideRivalTooltip();
+}
 
 function showRivalTooltip(slotEl, teamId) {
+  if (_gridDragging) return;
   clearTimeout(_tooltipTimeout);
   hideRivalTooltip(true);
 
@@ -324,6 +332,13 @@ function showRivalTooltip(slotEl, teamId) {
   if (!rivals.length) return;
   const team = getTeamById(teamId);
   if (!team) return;
+
+  // In the draggable step 2 grid, flag each rival as still sharing a division
+  // (preserved) or not (broken) based on the user's current layout, rather
+  // than the static original-MLB `inDivision` field on the rivalry data.
+  const divisionMap = slotEl.dataset.dynamicRivals && typeof getCurrentTeamDivisionMap === 'function'
+    ? getCurrentTeamDivisionMap()
+    : null;
 
   const tip = document.createElement('div');
   tip.className = 'rival-tooltip';
@@ -336,6 +351,10 @@ function showRivalTooltip(slotEl, teamId) {
     const s = makeLogoOnly(rivalId, 28);
     s.title = rival.name;
     s.style.cursor = 'pointer';
+    if (divisionMap && divisionMap.has(teamId) && divisionMap.has(rivalId)) {
+      const sameDivision = divisionMap.get(teamId) === divisionMap.get(rivalId);
+      s.classList.add(sameDivision ? 'rival-preserved' : 'rival-broken');
+    }
     s.addEventListener('click', () => {
       const target = document.querySelector(`.team-slot[data-team-id="${rivalId}"]`);
       if (target) { target.scrollIntoView({ behavior: 'smooth', block: 'center' }); highlightTeam(rivalId); }
