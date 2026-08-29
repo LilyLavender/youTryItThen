@@ -10,6 +10,8 @@ function step2ResetState() {
   if (wrapper) wrapper.innerHTML = '';
   const builder = document.getElementById('step2-builder');
   if (builder) builder.style.display = 'none';
+  const headerActions = document.getElementById('step2-header-actions');
+  if (headerActions) headerActions.style.display = 'none';
   const noBuilder = document.getElementById('step2-no-builder');
   if (noBuilder) noBuilder.style.display = '';
 }
@@ -20,6 +22,8 @@ function step2Show() {
     showBuilder();
   } else {
     document.getElementById('step2-builder').style.display = 'none';
+    const headerActions = document.getElementById('step2-header-actions');
+    if (headerActions) headerActions.style.display = 'none';
   }
 }
 
@@ -144,6 +148,8 @@ function showBuilder() {
   const builder = document.getElementById('step2-builder');
   if (!builder) return;
   builder.style.display = 'block';
+  const headerActions = document.getElementById('step2-header-actions');
+  if (headerActions) headerActions.style.display = 'flex';
   const noBuilder = document.getElementById('step2-no-builder');
   if (noBuilder) noBuilder.style.display = 'none';
   renderStep2Grid();
@@ -364,10 +370,9 @@ function updateMetricsBar() {
     inDivisionEl.style.color = inDivision >= 25 ? '#27ae60' : inDivision >= 15 ? '#f39c12' : '#e74c3c';
   }
 
-  const nextBtn = document.getElementById('step2-next-btn');
-  if (nextBtn) {
-    const unlocked = APP.isStep3Unlocked();
+  const unlocked = APP.isStep3Unlocked();
+  document.querySelectorAll('.step2-finalize-btn').forEach(nextBtn => {
     nextBtn.disabled = !unlocked;
     nextBtn.classList.toggle('ready', unlocked);
-  }
+  });
 }

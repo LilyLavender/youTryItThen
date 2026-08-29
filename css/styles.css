@@ -121,10 +121,11 @@ body {
   display: block;
   width: 120%;
   height: 16px;
-  background: #000000c0;
+  background: #1a1a1a;
   clip-path: polygon(0 0, 100% 0, 0 100%);
 }
 .step-subtitle { color: #666; font-size: 0.95rem; margin-bottom: 24px; }
+.step-header-row .step-subtitle { margin-bottom: 0; }
 
 
 /* ── Grid layout ─────────────────────────────────────────────────────── */
@@ -138,6 +139,8 @@ body {
   background: rgba(255,255,255,0.10);
   overflow: hidden;
   box-shadow: var(--shadow);
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .league-header {
@@ -484,11 +487,41 @@ body {
   margin-top: 2px;
 }
 
-/* ── Step 2 next button ─────────────────────────────────────────────── */
-.step-nav-row {
+/* ── Step header row (title + nav actions) ────────────────────────────── */
+.step-header-row {
   display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  row-gap: 10px;
+  column-gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+.step-header-row .step-title { order: 0; margin-bottom: 0; }
+.step-header-row .step-header-actions { order: 1; margin-left: auto; }
+.step-header-row .step-subtitle { order: 2; flex-basis: 100%; }
+.step-header-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Second copy of the nav buttons, shown below the content on all screen sizes */
+.step-bottom-nav {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 24px;
   justify-content: flex-end;
-  margin-top: 20px;
+}
+.step-bottom-nav:has(.btn-back) { justify-content: space-between; }
+.step-bottom-nav-group {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
 }
 .btn-next {
   padding: 12px 32px;
@@ -594,6 +627,52 @@ body {
   .teams-row { gap: 8px; padding: 10px 8px; }
   #step-nav { position: static; transform: none; margin-left: auto; }
   .nav-num { margin: 0; }
+
+  /* Top nav actions drop below the subtitle instead of sitting beside the title */
+  .step-header-row .step-header-actions { order: 3; margin-left: 0; width: 100%; }
+  .step-bottom-nav { display: flex; }
+
+  /* When back/reset/finalize all appear together, have them share the full row width evenly */
+  .step-header-actions:has(.btn-reset),
+  .step-bottom-nav:has(.btn-reset) {
+    flex-wrap: nowrap;
+    gap: 8px;
+  }
+  .step-bottom-nav:has(.btn-reset) .step-bottom-nav-group {
+    flex: 1 1 0;
+    min-width: 0;
+    flex-wrap: nowrap;
+    gap: 8px;
+  }
+  .step-header-actions:has(.btn-reset) .btn-back,
+  .step-header-actions:has(.btn-reset) .btn-reset,
+  .step-header-actions:has(.btn-reset) .btn-next,
+  .step-bottom-nav:has(.btn-reset) .btn-back,
+  .step-bottom-nav:has(.btn-reset) .btn-reset,
+  .step-bottom-nav:has(.btn-reset) .btn-next {
+    min-width: 0;
+    padding: 10px 6px;
+    font-size: 0.76rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    justify-content: center;
+  }
+  /* Back and Reset read as two separate, smaller options; Finalize takes the extra room */
+  .step-header-actions:has(.btn-reset) .btn-back,
+  .step-header-actions:has(.btn-reset) .btn-reset,
+  .step-bottom-nav:has(.btn-reset) > .btn-back,
+  .step-bottom-nav:has(.btn-reset) .btn-reset {
+    flex: 0.6 1 0;
+  }
+  .step-header-actions:has(.btn-reset) .btn-back,
+  .step-bottom-nav:has(.btn-reset) > .btn-back {
+    margin-right: 24px;
+  }
+  .step-header-actions:has(.btn-reset) .btn-next,
+  .step-bottom-nav:has(.btn-reset) .btn-next {
+    flex: 1.2 1 0;
+  }
 }
 
 /* ── Footer ─────────────────────────────────────────────────────────── */

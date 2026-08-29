@@ -447,7 +447,14 @@ function showMapTooltip(event, team) {
   tip.textContent = team.name || team.city;
   document.body.appendChild(tip);
   _mapTip = tip;
-  tip.style.left = (event.pageX + 10) + 'px';
+
+  const margin = 10;
+  const tipWidth = tip.offsetWidth;
+  let left = event.pageX + margin;
+  if (left + tipWidth > window.scrollX + document.documentElement.clientWidth - margin) {
+    left = event.pageX - margin - tipWidth;
+  }
+  tip.style.left = left + 'px';
   tip.style.top  = (event.pageY - 30) + 'px';
 }
 function hideMapTooltip() {
