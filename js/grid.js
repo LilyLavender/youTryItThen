@@ -192,8 +192,6 @@ function makeDiamondSlot(teamId, size = 56, draggable = false) {
     const sc = tweak.scale || 1;
     img.style.transform = `translateX(${dx}px) translateY(${dy}px) rotate(-45deg) scale(${0.75 * sc})`;
     diamond.appendChild(img);
-  } else if (team) {
-    diamond.appendChild(makeExpansionPlaceholder(team, size));
   }
 
   const outline = document.createElement('div');
@@ -202,6 +200,12 @@ function makeDiamondSlot(teamId, size = 56, draggable = false) {
   diamond.appendChild(outline);
 
   wrapper.appendChild(diamond);
+
+  // Drawn as a sibling of .diamond, not a child, so the label is never itself
+  // rotated — avoids the double-rotation text blur from the old rotate/counter-rotate approach.
+  if (team && (team.isExpansion || !team.mlbId)) {
+    wrapper.appendChild(makeExpansionPlaceholder(team, size));
+  }
 
   if (!draggable) {
     wrapper.addEventListener('mouseenter', () => showRivalTooltip(wrapper, teamId));
@@ -223,20 +227,66 @@ function makeInitialsFallback(team, size) {
   return span;
 }
 
+// Per-city nudges on top of the default city-name font size, from visual review
+// of every expansion candidate in temp-diamonds.html. Each step is +/-7% size.
+// Cities not listed (including ones still pending review) use the default, step 0.
+const EXP_CITY_FONT_STEPS = {
+  'Montreal': -1,
+  'Edmonton': -1,
+  'Monterrey': -1,
+  'Oklahoma City': -1,
+  'Savannah': -1,
+  'Birmingham': -2,
+  'Indianapolis': -3,
+  'Jacksonville': -3,
+  'Charlotte': -2,
+  'Sacramento': -2,
+  'Vancouver': -1,
+  'Quebec City': 1,
+  'Austin': 2,
+  'Buffalo': 2,
+  'Raleigh': 2,
+  'Halifax': 2,
+  'Omaha': 2,
+  'El Paso': 2,
+};
+const EXP_CITY_FONT_STEP_RATIO = 0.07;
+
+// Cities dialed to an exact px size (at the temp-diamonds.html reference size
+// of 90px) instead of a step off the default — kept as a ratio so it still
+// scales with whatever diamond size the app actually renders at.
+const EXP_CITY_FONT_RATIO_OVERRIDES = {
+  'New Orleans': 11 / 90,
+  'San Antonio': 12 / 90,
+  'San Juan': 15 / 90,
+  'Dominican Republic': 11 / 90,
+};
+
+// Diamond-only display label swaps — the underlying city name (used by the
+// city picker, map, and tooltip) is untouched.
+const EXP_CITY_DIAMOND_LABEL_OVERRIDES = {
+  'Santo Domingo': 'Dominican Republic',
+};
+
+// These are forced onto a single line even if that means overflowing the
+// diamond's usual text padding slightly — at their dialed-in font size, wrapping
+// looked worse than the overflow.
+const EXP_CITY_FORCE_ONE_LINE = new Set(['New Orleans', 'San Juan']);
+
 function makeExpansionPlaceholder(team, size) {
   const wrap = document.createElement('div');
   wrap.className = 'expansion-placeholder';
-  wrap.style.width = '100%';
-  const plus = document.createElement('span');
-  plus.className = 'exp-plus';
-  plus.textContent = '+';
-  plus.style.fontSize = Math.round(size * 0.54) + 'px';
+  const plus = document.createElement('i');
+  plus.className = 'exp-plus fa-solid fa-plus';
+  plus.style.fontSize = Math.round(size * 0.4) + 'px';
   const cityEl = document.createElement('span');
   cityEl.className = 'exp-city';
-  cityEl.textContent = team.city;
-  const _longCities = new Set(['Charlotte', 'Sacramento', 'Vancouver']);
-  cityEl.style.fontSize = Math.round(size * (_longCities.has(team.city) ? 0.13 : 0.16)) + 'px';
-  cityEl.style.marginTop = '-' + Math.round(size * (_longCities.has(team.city) ? 0.025 : 0.05)) + 'px';
+  const displayLabel = EXP_CITY_DIAMOND_LABEL_OVERRIDES[team.city] || team.city;
+  cityEl.textContent = displayLabel;
+  const cityRatio = EXP_CITY_FONT_RATIO_OVERRIDES[displayLabel]
+    || 0.16 * (1 + (EXP_CITY_FONT_STEPS[displayLabel] || 0) * EXP_CITY_FONT_STEP_RATIO);
+  cityEl.style.fontSize = Math.round(size * cityRatio) + 'px';
+  if (EXP_CITY_FORCE_ONE_LINE.has(displayLabel)) cityEl.style.whiteSpace = 'nowrap';
   wrap.appendChild(plus);
   wrap.appendChild(cityEl);
   return wrap;

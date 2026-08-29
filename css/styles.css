@@ -239,18 +239,24 @@ body {
 }
 
 .expansion-placeholder {
-  transform: rotate(-45deg);
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-26px);
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  width: 100%;
+  gap: 3px;
+  padding: 0 10%;
+  box-sizing: border-box;
   color: #fff;
   text-align: center;
   line-height: 1.1;
+  pointer-events: none;
 }
-.exp-plus { font-weight: 800; line-height: 1; margin-top: -16px; }
-.exp-city { font-weight: 700; text-transform: uppercase; word-break: break-all; text-align: center; }
+.exp-plus { line-height: 1; }
+.exp-city { font-weight: 700; text-transform: uppercase; word-break: normal; overflow-wrap: break-word; hyphens: auto; text-align: center; }
 
 /* ── Hover tooltip ─────────────────────────────────────────────────────── */
 .rival-tooltip {
@@ -549,6 +555,9 @@ body {
   cursor: pointer;
   color: #444;
   transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 .btn-back:hover { border-color: #999; color: #111; }
 

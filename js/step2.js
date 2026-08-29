@@ -46,7 +46,7 @@ function renderCitySelector() {
     container.style.marginBottom = '0';
     const pills = EXPANSION_CITIES
       .filter(c => chosen.includes(c.id))
-      .map(c => `<button class="city-pill selected" onclick="toggleCity('${c.id}')">${cityPillLabel(c)} ✕</button>`)
+      .map(c => `<button class="city-pill selected" onclick="toggleCity('${c.id}')">${cityPillLabel(c)} <i class="fa-solid fa-xmark"></i></button>`)
       .join('');
     container.innerHTML = `<span class="city-confirm-label">Expansion teams:</span>${pills}`;
     return;

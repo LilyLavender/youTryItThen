@@ -22,7 +22,7 @@
     <div class="step-header-row">
       <h1 class="step-title">Current MLB Divisions</h1>
       <div class="step-header-actions">
-        <button class="btn-next ready" onclick="APP.goToStep(2)">Start Building ›</button>
+        <button class="btn-next ready" onclick="APP.goToStep(2)">Start Building<i class="fa-solid fa-chevron-right"></i></button>
       </div>
       <p class="step-subtitle">All 30 teams & all 6 divisions. Hover a team to see its rivalries.</p>
     </div>
@@ -36,7 +36,7 @@
     </div>
 
     <div class="step-bottom-nav">
-      <button class="btn-next ready" onclick="APP.goToStep(2)">Start Building ›</button>
+      <button class="btn-next ready" onclick="APP.goToStep(2)">Start Building<i class="fa-solid fa-chevron-right"></i></button>
     </div>
   </div>
 </section>
@@ -48,9 +48,9 @@
     <div class="step-header-row">
       <h1 class="step-title">Build Your Divisions</h1>
       <div class="step-header-actions" id="step2-header-actions" style="display:none">
-        <button class="btn-back" onclick="APP.goToStep(1)">‹ Back</button>
+        <button class="btn-back" onclick="APP.goToStep(1)"><i class="fa-solid fa-chevron-left"></i>Back</button>
         <button class="btn-reset" onclick="APP.resetApp()"><i class="fa-solid fa-arrow-rotate-right"></i> Reset</button>
-        <button class="btn-next step2-finalize-btn" onclick="APP.goToStep(3)" disabled>Finalize & Share ›</button>
+        <button class="btn-next step2-finalize-btn" onclick="APP.goToStep(3)" disabled>Finalize & Share<i class="fa-solid fa-chevron-right"></i></button>
       </div>
       <p class="step-subtitle">Pick 2 expansion cities, then drag teams into 8 divisions of 4 teams each.</p>
     </div>
@@ -97,10 +97,10 @@
 
     <div class="narrow-content">
       <div class="step-bottom-nav">
-        <button class="btn-back" onclick="APP.goToStep(1)">‹ Back</button>
+        <button class="btn-back" onclick="APP.goToStep(1)"><i class="fa-solid fa-chevron-left"></i>Back</button>
         <div class="step-bottom-nav-group">
           <button class="btn-reset" onclick="APP.resetApp()"><i class="fa-solid fa-arrow-rotate-right"></i> Reset</button>
-          <button class="btn-next step2-finalize-btn" onclick="APP.goToStep(3)" disabled>Finalize & Share ›</button>
+          <button class="btn-next step2-finalize-btn" onclick="APP.goToStep(3)" disabled>Finalize & Share<i class="fa-solid fa-chevron-right"></i></button>
         </div>
       </div>
     </div>
@@ -108,7 +108,7 @@
 
   <div id="step2-no-builder" style="margin-top:16px">
     <div class="narrow-content">
-      <button class="btn-back" onclick="APP.goToStep(1)">‹ Back to Current MLB</button>
+      <button class="btn-back" onclick="APP.goToStep(1)"><i class="fa-solid fa-chevron-left"></i>Back to Current MLB</button>
     </div>
   </div>
 </section>
@@ -119,7 +119,7 @@
     <div class="step-header-row">
       <h1 class="step-title">Your Realignment</h1>
       <div class="step-header-actions">
-        <button class="btn-back" onclick="APP.goToStep(2)">‹ Back to Builder</button>
+        <button class="btn-back" onclick="APP.goToStep(2)"><i class="fa-solid fa-chevron-left"></i>Back to Builder</button>
       </div>
       <p class="step-subtitle">Let others see your new MLB.</p>
     </div>
@@ -144,7 +144,7 @@
   <div class="narrow-content">
     <div class="step3-metrics" id="step3-metrics-text"></div>
     <div class="step-bottom-nav">
-      <button class="btn-back" onclick="APP.goToStep(2)">‹ Back to Builder</button>
+      <button class="btn-back" onclick="APP.goToStep(2)"><i class="fa-solid fa-chevron-left"></i>Back to Builder</button>
     </div>
   </div>
 </section>
