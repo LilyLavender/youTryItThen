@@ -2,11 +2,7 @@
 // Call renderMapTeams(teamsData) to draw markers.
 // Call updateMapDivisions(divisions) to recolor division blobs.
 
-const MAP_AL_COLORS = ["rgba(208,2,27,0.30)","rgba(208,2,27,0.44)","rgba(208,2,27,0.55)","rgba(208,2,27,0.65)"];
-const MAP_NL_COLORS = ["rgba(0,57,166,0.30)","rgba(0,57,166,0.44)","rgba(0,57,166,0.55)","rgba(0,57,166,0.65)"];
-
-const MAP_AL_COLORS_3 = ["rgba(208,2,27,0.28)","rgba(208,2,27,0.42)","rgba(208,2,27,0.58)"];
-const MAP_NL_COLORS_3 = ["rgba(0,57,166,0.28)","rgba(0,57,166,0.42)","rgba(0,57,166,0.58)"];
+const MAP_BLOB_ALPHA = 0.45;
 
 function getMapLogoUrl(teamId) {
   return `img/logos/${teamId.toLowerCase()}.png`;
@@ -231,8 +227,9 @@ function renderDivisionBlobs(projected, divColorMap, divisions) {
 
   const divLeagueMap = new Map();
   if (divisions) {
-    (divisions.AL || []).forEach(d => divLeagueMap.set(d.name, 'AL'));
-    (divisions.NL || []).forEach(d => divLeagueMap.set(d.name, 'NL'));
+    divisions.leagues.forEach(lg => {
+      lg.divisions.forEach(d => divLeagueMap.set(d.name, lg.key));
+    });
   }
 
   // Padding in pixels added outward from each convex hull edge
@@ -415,15 +412,11 @@ function buildTeamsForMap(divisions) {
 function buildDivColorMap(divisions) {
   const map = new Map();
   if (!divisions) return map;
-  const leagueInfo = [
-    { league: 'AL', divs: divisions.AL, colors: MAP_AL_COLORS, colors3: MAP_AL_COLORS_3 },
-    { league: 'NL', divs: divisions.NL, colors: MAP_NL_COLORS, colors3: MAP_NL_COLORS_3 },
-  ];
-  leagueInfo.forEach(({ divs, colors, colors3 }) => {
-    if (!divs) return;
-    const useColors = divs.length <= 3 ? colors3 : colors;
-    divs.forEach((div, idx) => {
-      div.teams.forEach(id => map.set(id, useColors[idx % useColors.length]));
+  divisions.leagues.forEach(lg => {
+    const shades = generateDivisionShades(lg.key, lg.divisions.length);
+    lg.divisions.forEach((div, idx) => {
+      const color = hexToRgba(getDivisionColor(div, shades, idx), MAP_BLOB_ALPHA);
+      div.teams.forEach(id => map.set(id, color));
     });
   });
   return map;
@@ -431,8 +424,8 @@ function buildDivColorMap(divisions) {
 
 function getDivisionName(teamId, divisions) {
   if (!divisions) return null;
-  for (const league of ['AL', 'NL']) {
-    for (const div of (divisions[league] || [])) {
+  for (const lg of divisions.leagues) {
+    for (const div of lg.divisions) {
       if (div.teams.includes(teamId)) return div.name;
     }
   }
@@ -463,15 +456,14 @@ function hideMapTooltip() {
 
 // Build step-1 divisions object from TEAMS static data
 function buildStep1Divisions() {
-  const divs = { AL: [], NL: [] };
   const order = ['East', 'Central', 'West'];
-  order.forEach(divName => {
-    ['AL', 'NL'].forEach(league => {
-      const teams = TEAMS
-        .filter(t => t.league === league && t.division === divName)
-        .map(t => t.id);
-      divs[league].push({ name: `${league} ${divName}`, teams });
-    });
-  });
-  return divs;
+  const leagues = ['AL', 'NL'].map(league => ({
+    key: league,
+    label: league === 'AL' ? 'American League' : 'National League',
+    divisions: order.map(divName => ({
+      name: `${league} ${divName}`,
+      teams: TEAMS.filter(t => t.league === league && t.division === divName).map(t => t.id),
+    })),
+  }));
+  return { leagueMode: 'split', leagues };
 }

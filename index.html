@@ -52,14 +52,14 @@
         <button class="btn-reset" onclick="APP.resetApp()"><i class="fa-solid fa-arrow-rotate-right"></i> Reset</button>
         <button class="btn-next step2-finalize-btn" onclick="APP.goToStep(3)" disabled>Finalize & Share<i class="fa-solid fa-chevron-right"></i></button>
       </div>
-      <p class="step-subtitle">Pick 2 expansion cities, then drag teams into 8 divisions of 4 teams each.</p>
+      <p class="step-subtitle">Pick your expansion cities, then drag teams into your own divisions.</p>
     </div>
 
     <!-- City Selector -->
     <div class="city-selector-card">
       <div class="city-card-inner">
-        <h3>Choose 2 Expansion Cities</h3>
-        <p>MLB expands to 32 teams by 2030. Which cities get franchises?</p>
+        <h3>Choose Expansion Cities</h3>
+        <p>MLB may expand beyond 30 teams. Which cities get franchises? Pick at least 2 to start, you can add more later.</p>
       </div>
       <div id="city-selector"></div>
     </div>
@@ -67,6 +67,14 @@
 
   <!-- Builder (shown after confirm) -->
   <div id="step2-builder" style="display:none">
+
+    <div class="narrow-content">
+      <div id="league-mode-row">
+        <span id="league-mode-label"></span>
+        <button type="button" id="league-mode-toggle" class="btn-league-toggle" onclick="toggleLeagueModeUI()"></button>
+      </div>
+      <div id="step2-size-warning" class="size-warning" style="display:none"></div>
+    </div>
 
     <div id="step2-content-layout">
       <div id="step2-left-col">
@@ -87,7 +95,7 @@
               <div class="metric-sub" id="metric-rivalries-note"></div>
             </div>
           </div>
-          <div class="metric-item">
+          <div class="metric-item" id="metric-switches-item">
             <div class="metric-label">League Switches</div>
             <div class="metric-value" id="metric-switches">—</div>
           </div>

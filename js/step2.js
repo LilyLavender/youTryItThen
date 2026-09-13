@@ -30,6 +30,7 @@ function step2Show() {
 // ── City Selector ────────────────────────────────────────────────────────────
 
 let _moreCitiesExpanded = false;
+let _cityPickerOpen = false;
 
 function cityPillLabel(city) {
   return city.state ? `${city.city}, ${city.state}` : city.city;
@@ -41,23 +42,31 @@ function renderCitySelector() {
   const chosen = APP.step2State.expansionCities.map(c => c.id);
   const card = container.closest('.city-selector-card');
 
-  if (APP.step2State.confirmed && chosen.length === 2) {
+  if (APP.step2State.confirmed && chosen.length >= 2 && !_cityPickerOpen) {
     if (card) card.classList.add('city-card-confirmed');
     container.style.marginBottom = '0';
     const pills = EXPANSION_CITIES
       .filter(c => chosen.includes(c.id))
       .map(c => `<button class="city-pill selected" onclick="toggleCity('${c.id}')">${cityPillLabel(c)} <i class="fa-solid fa-xmark"></i></button>`)
       .join('');
-    container.innerHTML = `<span class="city-confirm-label">Expansion teams:</span>${pills}`;
+    const addBtn = `<button type="button" class="city-pill city-add-btn" title="Add another expansion city" onclick="toggleCityPicker()"><i class="fa-solid fa-plus"></i></button>`;
+    container.innerHTML = `<span class="city-confirm-label">Expansion teams:</span>${pills}${addBtn}`;
     return;
   }
 
   if (card) card.classList.remove('city-card-confirmed');
   container.style.marginBottom = '16px';
 
+  // No cap once the first 2 cities are confirmed
+  const capReached = !APP.step2State.confirmed && chosen.length >= 2;
+
+  const closeBtn = APP.step2State.confirmed
+    ? `<button type="button" class="city-pill city-picker-close" onclick="toggleCityPicker()"><i class="fa-solid fa-check"></i> Done</button>`
+    : '';
+
   const likelyPills = EXPANSION_CITIES.filter(c => c.tier === 'likely').map(city => {
     const isChosen = chosen.includes(city.id);
-    const isDisabled = !isChosen && chosen.length >= 2;
+    const isDisabled = !isChosen && capReached;
     return `<button
       class="city-pill ${isChosen ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}"
       data-city-id="${city.id}"
@@ -75,7 +84,7 @@ function renderCitySelector() {
   if (_moreCitiesExpanded) {
     const pills = moreCities.map(city => {
       const isChosen = chosen.includes(city.id);
-      const isDisabled = !isChosen && chosen.length >= 2;
+      const isDisabled = !isChosen && capReached;
       return `<button
         class="city-pill ${isChosen ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}"
         data-city-id="${city.id}"
@@ -90,11 +99,16 @@ function renderCitySelector() {
     </div>`;
   }
 
-  container.innerHTML = `<div class="city-pill-row">${likelyPills}${toggleBtn}</div>${morePanel}`;
+  container.innerHTML = `<div class="city-pill-row">${likelyPills}${toggleBtn}${closeBtn}</div>${morePanel}`;
 }
 
 function toggleMoreCities() {
   _moreCitiesExpanded = !_moreCitiesExpanded;
+  renderCitySelector();
+}
+
+function toggleCityPicker() {
+  _cityPickerOpen = !_cityPickerOpen;
   renderCitySelector();
 }
 
@@ -103,11 +117,12 @@ function toggleCity(cityId) {
   if (!city) return;
   const current = APP.step2State.expansionCities;
   const idx = current.findIndex(c => c.id === cityId);
+  const wasConfirmed = APP.step2State.confirmed;
 
   let newCities;
   if (idx >= 0) {
     newCities = current.filter((_, i) => i !== idx);
-  } else if (current.length < 2) {
+  } else if (wasConfirmed || current.length < 2) {
     newCities = [...current, city];
   } else {
     return;
@@ -115,27 +130,22 @@ function toggleCity(cityId) {
 
   APP.step2State.expansionCities = newCities;
 
+  if (wasConfirmed) {
+    APP.confirmExpansionCities();
+    renderCitySelector();
+    renderStep2Grid();
+    renderPoolArea();
+    _step2MapInited = false;
+    renderStep2Map();
+    return;
+  }
+
   if (newCities.length === 2) {
-    const firstTime = !APP.step2State.confirmed;
-    APP.confirmExpansionCities();  // updates expansion teams; preserves divisions if not first time
-    renderCitySelector();          // re-render after confirm so collapsed state shows
-    if (firstTime) {
-      showBuilder();
-    } else {
-      // Just refresh grid/pool in place so expansion team name/city updates.
-      // Force the map to rebuild too, since the new cities may need different
-      // projection bounds (e.g. swapping in/out a Mexico or Caribbean pick).
-      renderStep2Grid();
-      renderPoolArea();
-      _step2MapInited = false;
-      renderStep2Map();
-    }
+    APP.confirmExpansionCities();
+    renderCitySelector();
+    showBuilder();
   } else {
-    // Fewer than 2 cities - expand the selector back, keep builder visible.
-    // The grid/division layout is intentionally preserved (per the comment
-    // above), but the map and pool both reflect the *current* roster live from
-    // expansionTeamMap, so clear them rather than leaving a picked-then-removed
-    // city's marker/pool entry on screen until a replacement is confirmed.
+    // Fewer than 2 cities and never confirmed, keep the selector open.
     renderCitySelector();
     renderPoolArea();
     renderStep2Map();
@@ -155,7 +165,17 @@ function showBuilder() {
   renderStep2Grid();
   renderPoolArea();
   updateMetricsBar();
+  renderLeagueModeControl();
   renderStep2Map();
+}
+
+function renderLeagueModeControl() {
+  const label = document.getElementById('league-mode-label');
+  const btn = document.getElementById('league-mode-toggle');
+  if (!label || !btn) return;
+  const isSplit = APP.step2State.divisions && APP.step2State.divisions.leagueMode === 'split';
+  label.textContent = isSplit ? 'League mode: AL / NL' : 'League mode: single league';
+  btn.textContent = isSplit ? 'Switch to single league' : 'Switch to AL / NL';
 }
 
 function renderStep2Grid() {
@@ -171,7 +191,7 @@ function renderStep2Grid() {
 function renderPoolArea() {
   const poolArea = document.getElementById('step2-pool-area');
   if (!poolArea) return;
-  if (!APP.step2State.confirmed || APP.step2State.expansionCities.length !== 2) {
+  if (!APP.step2State.confirmed || APP.step2State.expansionCities.length < 2) {
     // Don't leave a previous confirmation's pool on screen once unconfirmed.
     if (_poolSortable) { _poolSortable.destroy(); _poolSortable = null; }
     poolArea.innerHTML = '';
@@ -183,7 +203,7 @@ function renderPoolArea() {
   const divs = APP.step2State.divisions;
   const assigned = new Set();
   if (divs) {
-    [...divs.AL, ...divs.NL].forEach(d => d.teams.forEach(id => assigned.add(id)));
+    divs.leagues.forEach(lg => lg.divisions.forEach(d => d.teams.forEach(id => assigned.add(id))));
   }
 
   const unassigned = [
@@ -234,7 +254,7 @@ function renderPoolArea() {
 }
 
 // Lay out pool items in an offset diamond grid (4-3-4-3 honeycomb pattern).
-// Called on initial render and after each drag to keep the layout tidy.
+// Called on initial render and after each drag to keep the layout clean.
 function _applyPoolGrid(poolEl, teamIds) {
   const isMobile = window.innerWidth < 720;
   const EVEN_COLS = isMobile ? 4 : 8, ODD_COLS = isMobile ? 3 : 7;
@@ -297,9 +317,8 @@ function onStep2Change() {
 async function renderStep2Map() {
   const wrapper = document.getElementById('step2-map-wrapper');
   if (!wrapper) return;
-  if (!APP.step2State.confirmed || APP.step2State.expansionCities.length !== 2) {
-    // Don't leave a previous confirmation's map frozen on screen while the
-    // city picker is reopened (0/1 selected) or unconfirmed.
+  if (!APP.step2State.confirmed || APP.step2State.expansionCities.length < 2) {
+    // Don't leave a previous confirmation's map frozen on screen while the city picker is reopened (0/1 selected) or unconfirmed.
     wrapper.innerHTML = '';
     _step2MapInited = false;
     _step2MapState = null;
@@ -331,16 +350,14 @@ async function renderStep2Map() {
 
 // ── Metrics ───────────────────────────────────────────────────────────────────
 
-// Maps each placed team id to a division key unique across leagues (division
-// names can repeat between AL/NL, e.g. both have an "East"), so same-name
-// divisions in different leagues never look like a shared division.
+// Maps each placed team id to a division key unique across leagues
 function getCurrentTeamDivisionMap() {
   const divisions = APP.step2State.divisions;
   const teamDiv = new Map();
   if (!divisions) return teamDiv;
-  ['AL', 'NL'].forEach(league => {
-    divisions[league].forEach(div => {
-      div.teams.forEach(id => teamDiv.set(id, `${league}:${div.name}`));
+  divisions.leagues.forEach(lg => {
+    lg.divisions.forEach((div, idx) => {
+      div.teams.forEach(id => teamDiv.set(id, `${lg.key}:${idx}`));
     });
   });
   return teamDiv;
@@ -349,8 +366,10 @@ function getCurrentTeamDivisionMap() {
 function countInDivisionRivalries(divisions) {
   if (!divisions) return 0;
   const teamDiv = new Map();
-  [...divisions.AL, ...divisions.NL].forEach(div => {
-    div.teams.forEach(id => teamDiv.set(id, div.name));
+  divisions.leagues.forEach(lg => {
+    lg.divisions.forEach((div, idx) => {
+      div.teams.forEach(id => teamDiv.set(id, `${lg.key}:${idx}`));
+    });
   });
   return RIVALRIES.filter(r =>
     teamDiv.has(r.teams[0]) && teamDiv.has(r.teams[1]) &&
@@ -358,10 +377,13 @@ function countInDivisionRivalries(divisions) {
   ).length;
 }
 
+// Only count in split mode
 function countLeagueSwitches(divisions) {
-  if (!divisions) return 0;
-  const alSet = new Set(divisions.AL.flatMap(d => d.teams));
-  const nlSet = new Set(divisions.NL.flatMap(d => d.teams));
+  if (!divisions || divisions.leagueMode !== 'split') return 0;
+  const al = divisions.leagues.find(l => l.key === 'AL');
+  const nl = divisions.leagues.find(l => l.key === 'NL');
+  const alSet = new Set((al ? al.divisions : []).flatMap(d => d.teams));
+  const nlSet = new Set((nl ? nl.divisions : []).flatMap(d => d.teams));
   let switches = 0;
   TEAMS.forEach(t => {
     if (t.league === 'AL' && nlSet.has(t.id)) switches++;
@@ -370,22 +392,61 @@ function countLeagueSwitches(divisions) {
   return switches;
 }
 
+function toggleLeagueModeUI() {
+  const isSplit = APP.step2State.divisions && APP.step2State.divisions.leagueMode === 'split';
+  if (!isSplit) {
+    // Going single -> split can't preserve which league each division belongs to,
+    // so every assigned team gets sent back to the pool.
+    const msg = 'Switching to AL / NL will send every currently-assigned team back to the unassigned pool. Continue?';
+    if (!confirm(msg)) return;
+  }
+  APP.toggleLeagueMode();
+  renderStep2Grid();
+  renderPoolArea();
+  updateMetricsBar();
+  renderLeagueModeControl();
+  APP._renderNav();
+  _step2MapInited = false;
+  renderStep2Map();
+}
+
+// Non-blocking warning when division sizes vary a lot.
+function renderDivisionSizeWarning(divisions) {
+  const el = document.getElementById('step2-size-warning');
+  if (!el) return;
+  if (!divisions) { el.style.display = 'none'; return; }
+  const sizes = divisions.leagues.flatMap(lg => lg.divisions.map(d => d.teams.length)).filter(n => n > 0);
+  if (sizes.length < 2) { el.style.display = 'none'; return; }
+  const min = Math.min(...sizes), max = Math.max(...sizes);
+  if (max - min > 1) {
+    el.textContent = `Division sizes vary a lot (${min}-${max} teams). That's allowed, but even divisions are preferred.`;
+    el.style.display = '';
+  } else {
+    el.style.display = 'none';
+  }
+}
+
 function updateMetricsBar() {
   const divs = APP.step2State.divisions;
   const inDivision = countInDivisionRivalries(divs);
   const total = TOTAL_RIVALRIES;
-  const switches = countLeagueSwitches(divs);
+  const isSplit = !!divs && divs.leagueMode === 'split';
+  const switches = isSplit ? countLeagueSwitches(divs) : 0;
 
   const inDivisionEl = document.getElementById('metric-rivalries');
   const switchesEl  = document.getElementById('metric-switches');
+  const switchesItem = document.getElementById('metric-switches-item');
   const noteEl      = document.getElementById('metric-rivalries-note');
   if (inDivisionEl) inDivisionEl.textContent = `${inDivision} / ${total}`;
   if (switchesEl)  switchesEl.textContent = switches;
+  if (switchesItem) switchesItem.style.display = isSplit ? '' : 'none';
   if (noteEl) noteEl.textContent = `${ORIG_IN_DIVISION_RIVALRIES} were originally in-division`;
 
   if (inDivisionEl) {
     inDivisionEl.style.color = inDivision >= 25 ? '#27ae60' : inDivision >= 15 ? '#f39c12' : '#e74c3c';
   }
+
+  renderDivisionSizeWarning(divs);
 
   const unlocked = APP.isStep3Unlocked();
   document.querySelectorAll('.step2-finalize-btn').forEach(nextBtn => {

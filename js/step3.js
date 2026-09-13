@@ -41,10 +41,13 @@ function renderStep3Metrics() {
   const divs = APP.step2State.divisions;
   const inDivision = countInDivisionRivalries(divs);
   const total = TOTAL_RIVALRIES;
-  const switches = countLeagueSwitches(divs);
+  const isSplit = divs && divs.leagueMode === 'split';
 
   const el = document.getElementById('step3-metrics-text');
-  if (el) el.textContent = `${inDivision}/${total} rivalries in-division · ${switches} league switches`;
+  if (!el) return;
+  el.textContent = isSplit
+    ? `${inDivision}/${total} rivalries in-division · ${countLeagueSwitches(divs)} league switches`
+    : `${inDivision}/${total} rivalries in-division`;
 }
 
 // ── Export ───────────────────────────────────────────────────────────────────
@@ -52,20 +55,19 @@ function renderStep3Metrics() {
 async function exportGridPNG() {
   if (!APP.step2State.divisions) return;
 
-  // Render into an off-screen container at a fixed desktop width so the export
-  // always produces a 2-column layout regardless of the current viewport size.
+  // Render into an off-screen container, sized to fit however many teams end
+  // up in the widest division rather than a fixed page width, so no division
+  // wraps onto multiple lines in the downloaded image.
   const offscreen = document.createElement('div');
-  offscreen.style.cssText = 'position:fixed;left:-9999px;top:0;width:720px;background:transparent;';
+  offscreen.style.cssText = 'position:fixed;left:-9999px;top:0;background:transparent;';
   document.body.appendChild(offscreen);
 
   renderGrid(offscreen, APP.step2State.divisions, {
     draggable: false,
     teamSize: 56,
     exportMode: true,
+    fitWidth: true,
   });
-  // renderGrid sets container.className = 'grid-layout'; force 2-col via inline
-  // style to override any mobile media-query that collapses to 1 column.
-  offscreen.style.gridTemplateColumns = '1fr 1fr';
 
   const imgs = [...offscreen.querySelectorAll('img')];
   const origAttrs = imgs.map(img => img.getAttribute('src'));
@@ -220,17 +222,17 @@ async function shareOnTwitter() {
   const divs = APP.step2State.divisions;
   const inDivision = countInDivisionRivalries(divs);
   const total = TOTAL_RIVALRIES;
-  const switches = countLeagueSwitches(divs);
-  const tweetText = `I re-designed the MLB for 2030!\n${inDivision}/${total} rivalries in-division & ${switches} league switches.\n\nThink you can do better? #YouTryItThen`;
+  const isSplit = divs && divs.leagueMode === 'split';
+  const switchesText = isSplit ? ` & ${countLeagueSwitches(divs)} league switches` : '';
+  const tweetText = `I re-designed the MLB for 2030!\n${inDivision}/${total} rivalries in-division${switchesText}.\n\nThink you can do better? #YouTryItThen`;
 
   const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
 
-  // Render at export quality (720px offscreen, same as exportGridPNG).
+  // Render at export quality, same fit-to-content sizing as exportGridPNG.
   const offscreen = document.createElement('div');
-  offscreen.style.cssText = 'position:fixed;left:-9999px;top:0;width:720px;background:transparent;';
+  offscreen.style.cssText = 'position:fixed;left:-9999px;top:0;background:transparent;';
   document.body.appendChild(offscreen);
-  renderGrid(offscreen, divs, { draggable: false, teamSize: 56, exportMode: true });
-  offscreen.style.gridTemplateColumns = '1fr 1fr';
+  renderGrid(offscreen, divs, { draggable: false, teamSize: 56, exportMode: true, fitWidth: true });
 
   const imgs = [...offscreen.querySelectorAll('img')];
   const origAttrs = imgs.map(img => img.getAttribute('src'));

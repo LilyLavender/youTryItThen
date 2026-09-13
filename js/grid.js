@@ -1,15 +1,108 @@
 // Renders the diamond grid for any step.
-// divisions: { AL: [{name, teams:[id,...]}, ...], NL: [{name, teams:[id,...]}, ...] }
-// options: { draggable, teamSize, leagueColors, onDragEnd, exportMode }
+// divisionsData: { leagueMode: 'split'|'single', leagues: [{key, label, divisions:[{name, teams:[id,...]}, ...]}, ...] }
+// options: { draggable, teamSize, onDragEnd, exportMode }
 
-const AL_HEADER_COLOR = "#D0021B";
-const NL_HEADER_COLOR = "#0039A6";
-const AL_DIV_HEADER_BG = "rgba(208,2,27,0.50)";
-const NL_DIV_HEADER_BG = "rgba(0,57,166,0.50)";
+const LEAGUE_HEADER_COLORS = { AL: "#D0021B", NL: "#0039A6" };
+const LEAGUE_HEADER_FALLBACK = "#4a4a4a";
+const LEAGUE_HUES = { AL: 357, NL: 209 }; // red, blue
 
-// 4 shades per league for step 2
-const AL_DIV_COLORS = ["#c0392b","#e74c3c","#e95d4c","#f07066"];
-const NL_DIV_COLORS = ["#1a5276","#2980b9","#3498db","#5dade2"];
+function hslToHex(h, s, l) {
+  s /= 100; l /= 100;
+  const k = n => (n + h / 30) % 12;
+  const a = s * Math.min(l, 1 - l);
+  const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+  const toHex = v => Math.round(v * 255).toString(16).padStart(2, '0');
+  return `#${toHex(f(0))}${toHex(f(8))}${toHex(f(4))}`;
+}
+
+function hexToRgba(hex, alpha) {
+  if (!hex || hex.length < 7) return `rgba(136,136,136,${alpha})`;
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+// Generates `count` distinct division shades for a given league key.
+// AL/NL stay within their red/blue hue family (spread by lightness).
+// Any other key (single/no-league mode) spreads hues via the golden angle,
+// so colors stay visually distinct no matter how many divisions there are.
+function generateDivisionShades(leagueKey, count) {
+  if (count <= 0) return [];
+  const hue = LEAGUE_HUES[leagueKey];
+  if (hue != null) {
+    const sat = 65;
+    const minL = 38, maxL = 68;
+    return Array.from({ length: count }, (_, i) => {
+      const l = count === 1 ? minL : minL + (maxL - minL) * (i / (count - 1));
+      return hslToHex(hue, sat, l);
+    });
+  }
+  const GOLDEN_ANGLE = 137.508;
+  return Array.from({ length: count }, (_, i) => hslToHex((i * GOLDEN_ANGLE) % 360, 60, 50));
+}
+
+// Returns the color to actually render for a division:
+// its manual override if the user picked one via the color picker,
+// otherwise the auto-generated shade.
+function getDivisionColor(div, shades, idx) {
+  return div.color || shades[idx];
+}
+
+// 8 hues x 6 shades (dark -> light) preset palette for the manual color picker.
+const PALETTE_HUES = [357, 25, 45, 140, 175, 209, 265, 320];
+const PALETTE_LIGHTNESSES = [30, 40, 50, 60, 70, 80];
+function getPaletteSwatches() {
+  return PALETTE_LIGHTNESSES.map(l => PALETTE_HUES.map(h => hslToHex(h, 65, l)));
+}
+
+let _colorPickerEl = null;
+function closeColorPicker() {
+  if (_colorPickerEl) { _colorPickerEl.remove(); _colorPickerEl = null; }
+  document.removeEventListener('mousedown', _onColorPickerOutsideClick, true);
+}
+function _onColorPickerOutsideClick(e) {
+  if (_colorPickerEl && !_colorPickerEl.contains(e.target)) closeColorPicker();
+}
+
+// Opens a swatch-grid popover anchored under anchorEl.
+// onPick receives a hex string or null when the user chooses "Auto" to clear the manual override.
+function openColorPicker(anchorEl, currentColor, onPick) {
+  closeColorPicker();
+  const popover = document.createElement('div');
+  popover.className = 'color-picker-popover';
+
+  const autoBtn = document.createElement('button');
+  autoBtn.type = 'button';
+  autoBtn.className = 'color-picker-auto';
+  autoBtn.textContent = 'Auto';
+  autoBtn.addEventListener('click', () => { onPick(null); closeColorPicker(); });
+  popover.appendChild(autoBtn);
+
+  const grid = document.createElement('div');
+  grid.className = 'color-picker-grid';
+  getPaletteSwatches().forEach(row => {
+    row.forEach(hex => {
+      const swatch = document.createElement('button');
+      swatch.type = 'button';
+      swatch.className = 'color-swatch';
+      swatch.style.background = hex;
+      swatch.title = hex;
+      if (currentColor && currentColor.toLowerCase() === hex.toLowerCase()) swatch.classList.add('selected');
+      swatch.addEventListener('click', () => { onPick(hex); closeColorPicker(); });
+      grid.appendChild(swatch);
+    });
+  });
+  popover.appendChild(grid);
+
+  document.body.appendChild(popover);
+  const rect = anchorEl.getBoundingClientRect();
+  popover.style.left = Math.min(rect.left + window.scrollX, window.innerWidth - popover.offsetWidth - 8) + 'px';
+  popover.style.top = (rect.bottom + window.scrollY + 4) + 'px';
+
+  _colorPickerEl = popover;
+  setTimeout(() => document.addEventListener('mousedown', _onColorPickerOutsideClick, true), 0);
+}
 
 const DARK_LOGO_TEAMS = new Set(['atl','ath','cin','cle','col','det','hou','kc','lad','min','nyy','phi','stl','tb','tex','wsh']);
 
@@ -59,38 +152,62 @@ function adjustHexColor(hex, amount) {
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
 }
 
-function renderGrid(container, divisions, options = {}) {
-  const { draggable = false, teamSize = 56, exportMode = false, onDragEnd = null } = options;
+function renderGrid(container, divisionsData, options = {}) {
+  const { draggable = false, teamSize = 56, exportMode = false, onDragEnd = null, fitWidth = false } = options;
   container.innerHTML = '';
   container.className = 'grid-layout';
+  const leagues = divisionsData.leagues || [];
+  if (fitWidth) {
+    // Downloaded/shared images: size every column to its own widest division
+    // instead of splitting a fixed page width evenly, so a division never wraps.
+    container.style.gridTemplateColumns = leagues.map(() => 'max-content').join(' ');
+    container.style.width = 'max-content';
+  } else {
+    // The default CSS handles the 2-column case (and collapses it to 1 column on mobile)
+    // Only override inline for single-league mode, where there's just one column at every width.
+    container.style.gridTemplateColumns = leagues.length === 1 ? '1fr' : '';
+    container.style.width = '';
+  }
+  const showLeagueHeader = !exportMode && leagues.length > 1;
 
-  const makeLeagueCol = (league, divs) => {
-    const isAL = league === 'AL';
+  const removeDivisionFromUI = (leagueKey, idx) => {
+    if (APP.removeDivision(leagueKey, idx)) {
+      renderGrid(container, APP.step2State.divisions, options);
+      if (typeof renderPoolArea === 'function') renderPoolArea();
+      if (onDragEnd) onDragEnd();
+    }
+  };
+
+  const addDivisionToUI = (leagueKey) => {
+    APP.addDivision(leagueKey);
+    renderGrid(container, APP.step2State.divisions, options);
+    if (onDragEnd) onDragEnd();
+  };
+
+  const makeLeagueCol = (league) => {
     const col = document.createElement('div');
-    col.className = `league-col ${league.toLowerCase()}`;
+    col.className = `league-col ${league.key.toLowerCase()}`;
 
-    if (!exportMode) {
+    if (showLeagueHeader) {
       const leagueHeader = document.createElement('div');
       leagueHeader.className = 'league-header';
-      leagueHeader.style.background = isAL ? AL_HEADER_COLOR : NL_HEADER_COLOR;
-      leagueHeader.textContent = isAL ? 'AMERICAN LEAGUE' : 'NATIONAL LEAGUE';
+      leagueHeader.style.background = LEAGUE_HEADER_COLORS[league.key] || LEAGUE_HEADER_FALLBACK;
+      leagueHeader.textContent = (league.label || league.key).toUpperCase();
       col.appendChild(leagueHeader);
     }
 
-    const divHeaderColor = exportMode
-      ? (isAL ? 'rgba(180,0,15,0.75)' : 'rgba(0, 40, 165, 0.75)')
-      : (isAL ? AL_DIV_HEADER_BG : NL_DIV_HEADER_BG);
-    divs.forEach((div, idx) => {
+    const shades = generateDivisionShades(league.key, league.divisions.length);
+    league.divisions.forEach((div, idx) => {
       const block = document.createElement('div');
       block.className = 'division-block';
-      block.dataset.league = league;
+      block.dataset.league = league.key;
       block.dataset.divName = div.name;
       block.dataset.divIdx = idx;
 
       const header = document.createElement('div');
       header.className = 'division-header';
-      header.style.background = divHeaderColor;
-      header.style.mixBlendMode = 'multiply';
+      const shadeAlpha = exportMode ? 0.75 : 0.55;
+      header.style.background = hexToRgba(getDivisionColor(div, shades, idx), shadeAlpha);
       if (exportMode) {
         header.style.fontWeight = '800';
         header.style.fontSize = '1.3em';
@@ -110,24 +227,54 @@ function renderGrid(container, divisions, options = {}) {
           block.dataset.divName = newName;
           // Persist directly to state so renames survive re-renders and tab switches
           if (APP.step2State && APP.step2State.divisions) {
-            const league = block.dataset.league;
+            const leagueKey = block.dataset.league;
             const idx = parseInt(block.dataset.divIdx);
-            const arr = APP.step2State.divisions[league];
-            if (arr && arr[idx]) arr[idx].name = newName;
+            const lg = APP.step2State.divisions.leagues.find(l => l.key === leagueKey);
+            if (lg && lg.divisions[idx]) lg.divisions[idx].name = newName;
           }
           APP._renderNav();
           APP.saveToStorage();
           if (onDragEnd) onDragEnd();
         });
+
+        const colorBtn = document.createElement('button');
+        colorBtn.type = 'button';
+        colorBtn.className = 'division-color-btn';
+        colorBtn.title = 'Choose division color';
+        colorBtn.innerHTML = '<i class="fa-solid fa-palette"></i>';
+        colorBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          openColorPicker(colorBtn, div.color, (hex) => {
+            div.color = hex;
+            APP.saveToStorage();
+            renderGrid(container, APP.step2State.divisions, options);
+            if (typeof renderStep2Map === 'function') renderStep2Map();
+            if (onDragEnd) onDragEnd();
+          });
+        });
+        block.appendChild(colorBtn);
+
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'division-remove-btn';
+        removeBtn.title = 'Remove division';
+        removeBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+        removeBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          removeDivisionFromUI(league.key, idx);
+        });
+        block.appendChild(removeBtn);
       }
       header.textContent = div.name;
       block.appendChild(header);
 
       const teamsRow = document.createElement('div');
       teamsRow.className = 'teams-row';
+      if (fitWidth) teamsRow.style.flexWrap = 'nowrap';
 
       div.teams.forEach(teamId => {
         const slot = makeDiamondSlot(teamId, teamSize, draggable);
+        if (fitWidth) slot.style.flexShrink = '0';
         teamsRow.appendChild(slot);
       });
 
@@ -154,11 +301,19 @@ function renderGrid(container, divisions, options = {}) {
       }
     });
 
+    if (draggable && !exportMode) {
+      const addBtn = document.createElement('button');
+      addBtn.type = 'button';
+      addBtn.className = 'division-add-btn';
+      addBtn.innerHTML = '<i class="fa-solid fa-plus"></i> Add Division';
+      addBtn.addEventListener('click', () => addDivisionToUI(league.key));
+      col.appendChild(addBtn);
+    }
+
     return col;
   };
 
-  container.appendChild(makeLeagueCol('AL', divisions.AL));
-  container.appendChild(makeLeagueCol('NL', divisions.NL));
+  leagues.forEach(league => container.appendChild(makeLeagueCol(league)));
 }
 
 function makeDiamondSlot(teamId, size = 56, draggable = false) {
@@ -412,15 +567,22 @@ function toggleMobileRivals(slotEl, teamId) {
 // Only syncs division blocks within step2-grid to avoid polluting state from step3 preview
 function syncDivisionsFromDOM() {
   const gridEl = document.getElementById('step2-grid');
-  if (!gridEl) return;
-  const divs = { AL: [], NL: [] };
+  if (!gridEl || !APP.step2State.divisions) return;
+  // Dragging only moves teams between .teams-row containers.
+  // Division blocks themselves never reorder, so data-div-idx still matches each league's current array index,
+  // which lets color overrides survive the resync.
+  const byLeague = new Map();
   gridEl.querySelectorAll('.division-block[data-league]').forEach(block => {
-    const league = block.dataset.league;
+    const leagueKey = block.dataset.league;
+    const divIdx = parseInt(block.dataset.divIdx, 10);
     const name = block.querySelector('.division-header').textContent.trim();
     const teams = [...block.querySelectorAll('.team-slot[data-team-id]')].map(el => el.dataset.teamId);
-    divs[league].push({ name, teams });
+    const existingLg = APP.step2State.divisions.leagues.find(l => l.key === leagueKey);
+    const color = existingLg && existingLg.divisions[divIdx] ? existingLg.divisions[divIdx].color : null;
+    if (!byLeague.has(leagueKey)) byLeague.set(leagueKey, []);
+    byLeague.get(leagueKey).push({ name, teams, color });
   });
-  if (APP.step2State.divisions) {
-    APP.step2State.divisions = divs;
-  }
+  APP.step2State.divisions.leagues.forEach(lg => {
+    if (byLeague.has(lg.key)) lg.divisions = byLeague.get(lg.key);
+  });
 }
