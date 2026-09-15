@@ -199,10 +199,7 @@ window.APP = {
     const divs = this.step2State.divisions;
     if (!divs) return false;
     const allDivs = divs.leagues.flatMap(l => l.divisions);
-    if (allDivs.some(d => d.teams.length < 2)) return false;
-    const totalAssigned = allDivs.reduce((sum, d) => sum + d.teams.length, 0);
-    const totalTeams = TEAMS.length + this.expansionTeamMap.size;
-    return totalAssigned === totalTeams;
+    return !allDivs.some(d => d.teams.length < 2);
   },
 
   _renderNav() {
