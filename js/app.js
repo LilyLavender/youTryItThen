@@ -25,9 +25,13 @@ window.APP = {
     const newMap = new Map();
     cities.forEach(city => {
       const id = `EXP-${city.id}`;
-      newMap.set(id, {
+      // Preserve an existing team's customization (logo, colors) if this city
+      // was already confirmed before — only brand-new cities get fresh defaults.
+      const existing = this.expansionTeamMap.get(id);
+      newMap.set(id, existing || {
         id,
         name: `${city.city} Team`,
+        nameCustomized: false,
         city: city.city,
         lat: city.lat,
         lng: city.lng,
@@ -39,6 +43,7 @@ window.APP = {
         isExpansion: true,
         expansionCityId: city.id,
         mapAbbr: city.mapAbbr,
+        logo: { light: null, dark: null, tweak: { dx: 0, dy: 0, scale: 1 } },
       });
     });
     this.expansionTeamMap = newMap;

@@ -339,6 +339,168 @@ body {
 .exp-plus { line-height: 1; }
 .exp-city { font-weight: 700; text-transform: uppercase; word-break: normal; overflow-wrap: break-word; hyphens: auto; text-align: center; }
 
+/* ── Expansion logo edit trigger ──────────────────────────────────────── */
+.logo-edit-btn {
+  position: absolute;
+  top: -4px;
+  right: 2px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: rgba(0,0,0,0.4);
+  color: #fff;
+  font-size: 0.65rem;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s;
+  z-index: 5;
+}
+.team-slot:hover .logo-edit-btn { opacity: 1; }
+.logo-edit-btn:hover { background: rgba(0,0,0,0.75); }
+
+/* ── Logo editor hovercard (click-toggled popover) ──────────────────────── */
+/* Glass treatment matches .city-selector-card / .map-wrapper; sharp corners
+   (no border-radius) matches the rest of the app's panels and buttons. */
+.logo-hovercard {
+  position: absolute;
+  z-index: 600;
+  background: var(--glass);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  padding: 14px;
+  box-shadow: var(--shadow);
+  width: 250px;
+}
+.logo-hovercard-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.logo-hovercard-name-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  border-bottom: 2px solid #ddd;
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #111;
+  padding: 2px 0;
+}
+.logo-hovercard-name-input:focus { outline: none; border-bottom-color: #999; }
+.logo-hovercard-close {
+  border: none;
+  background: transparent;
+  color: #999;
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 2px 4px;
+  flex-shrink: 0;
+}
+.logo-hovercard-close:hover { color: #333; }
+.logo-hovercard-preview {
+  display: flex;
+  justify-content: center;
+  padding: 6px 0 12px;
+}
+.logo-hovercard-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.logo-hovercard-row:last-child { margin-bottom: 0; }
+.logo-hovercard-file-field, .logo-hovercard-slider-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #666;
+}
+.logo-hovercard-slider-field input[type="range"] {
+  width: 100%;
+  accent-color: #333;
+}
+.logo-hovercard-file-field input[type="file"] {
+  font-size: 0.7rem;
+  color: #666;
+  max-width: 100%;
+}
+.logo-hovercard-file-field input[type="file"]::file-selector-button {
+  margin-right: 8px;
+  padding: 4px 10px;
+  border: 2px solid #ddd;
+  background: rgba(255,255,255,0.6);
+  font-family: var(--font);
+  font-weight: 600;
+  font-size: 0.7rem;
+  color: #444;
+  cursor: pointer;
+}
+.logo-hovercard-file-field input[type="file"]::file-selector-button:hover {
+  border-color: #999;
+  background: #fff;
+}
+.logo-hovercard-toggle-btn {
+  align-self: flex-start;
+  padding: 5px 10px;
+  border: 2px solid #ddd;
+  background: rgba(255,255,255,0.6);
+  font-family: var(--font);
+  font-weight: 600;
+  font-size: 0.72rem;
+  color: #444;
+  cursor: pointer;
+}
+.logo-hovercard-toggle-btn:hover { border-color: #999; background: #fff; }
+.logo-hovercard-toggle-btn.active { background: #111; border-color: #111; color: #fff; }
+.logo-hovercard-toggle-btn.active:hover { background: #333; border-color: #333; }
+.logo-hovercard-colors {
+  flex-direction: row;
+  gap: 20px;
+}
+.logo-hovercard-color-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #666;
+  cursor: pointer;
+}
+/* Native color input, stripped of its default chrome so the swatch reads as
+   a plain sharp-cornered rectangle, consistent with the rest of the app. */
+.logo-hovercard-color-swatch {
+  width: 26px;
+  height: 22px;
+  border: 2px solid #ddd;
+  padding: 0;
+  cursor: pointer;
+  background: none;
+}
+.logo-hovercard-color-swatch::-webkit-color-swatch-wrapper { padding: 0; }
+.logo-hovercard-color-swatch::-webkit-color-swatch { border: none; }
+.logo-hovercard-color-swatch::-moz-color-swatch { border: none; }
+.logo-hovercard-color-swatch:hover { border-color: #999; }
+.logo-hovercard-remove-btn {
+  width: 100%;
+  padding: 6px;
+  border: none;
+  border-top: 1px dashed rgba(0,0,0,0.12);
+  background: transparent;
+  color: #999;
+  font-family: var(--font);
+  font-weight: 600;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+.logo-hovercard-remove-btn:hover { color: #c0392b; }
+
 /* ── Hover tooltip ─────────────────────────────────────────────────────── */
 .rival-tooltip {
   position: absolute;

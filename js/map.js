@@ -331,11 +331,22 @@ function renderMapTeams(teamsWithDivisions, divisions, opts = {}) {
       .attr("data-team-id", team.id)
       .style("cursor", "pointer");
 
+    const hasCustomLogo = team.isExpansion && team.logo && (team.logo.light || team.logo.dark);
     if (team.mlbId && !team.isExpansion) {
       g.append("image")
         .attr("href", getMapLogoUrl(team.id))
         .attr("x", -imgSize / 2).attr("y", -imgSize / 2)
         .attr("width", imgSize).attr("height", imgSize);
+    } else if (hasCustomLogo) {
+      const tweak = team.logo.tweak || {};
+      const sc = tweak.scale || 1;
+      const dx = ((tweak.dx || 0) / 90) * imgSize;
+      const dy = ((tweak.dy || 0) / 90) * imgSize;
+      const logoSize = imgSize * sc;
+      g.append("image")
+        .attr("href", team.logo.dark || team.logo.light)
+        .attr("x", -logoSize / 2 + dx).attr("y", -logoSize / 2 + dy)
+        .attr("width", logoSize).attr("height", logoSize);
     } else {
       // Expansion team: keep diamond placeholder
       g.append("polygon")

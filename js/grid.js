@@ -316,11 +316,13 @@ function renderGrid(container, divisionsData, options = {}) {
   leagues.forEach(league => container.appendChild(makeLeagueCol(league)));
 }
 
-function makeDiamondSlot(teamId, size = 56, draggable = false) {
-  const team = getTeamById(teamId);
+// teamOrId: a team id string, or (for the logo-editor hovercard's own preview)
+// a team object passed directly instead of looked up by id.
+function makeDiamondSlot(teamOrId, size = 56, draggable = false) {
+  const team = typeof teamOrId === 'object' && teamOrId ? teamOrId : getTeamById(teamOrId);
   const wrapper = document.createElement('div');
   wrapper.className = 'team-slot';
-  wrapper.dataset.teamId = teamId;
+  wrapper.dataset.teamId = team ? team.id : teamOrId;
 
   const diamond = document.createElement('div');
   diamond.className = 'diamond';
@@ -334,7 +336,20 @@ function makeDiamondSlot(teamId, size = 56, draggable = false) {
   diamond.style.background = `linear-gradient(135deg, ${lighter}, ${darker})`;
   diamond.style.borderColor = 'transparent';
 
-  if (team && !team.isExpansion && team.mlbId) {
+  const hasCustomLogo = team && team.isExpansion && team.logo && (team.logo.light || team.logo.dark);
+  if (hasCustomLogo) {
+    const img = document.createElement('img');
+    img.src = team.logo.light || team.logo.dark;
+    img.alt = team.city || team.id;
+    img.setAttribute('draggable', 'false');
+    img.onerror = () => { img.style.display = 'none'; wrapper.appendChild(makeExpansionPlaceholder(team, size)); };
+    const tweak = team.logo.tweak || {};
+    const dx = tweak.dx || 0;
+    const dy = tweak.dy || 0;
+    const sc = tweak.scale || 1;
+    img.style.transform = `translateX(${dx}px) translateY(${dy}px) rotate(-45deg) scale(${0.75 * sc})`;
+    diamond.appendChild(img);
+  } else if (team && !team.isExpansion && team.mlbId) {
     const img = document.createElement('img');
     img.src = getLocalLogoUrl(team.id, true);
     img.alt = team.id;
@@ -360,15 +375,28 @@ function makeDiamondSlot(teamId, size = 56, draggable = false) {
 
   // Drawn as a sibling of .diamond, not a child, so the label is never itself
   // rotated — avoids the double-rotation text blur from the old rotate/counter-rotate approach.
-  if (team && (team.isExpansion || !team.mlbId)) {
+  if (team && (team.isExpansion || !team.mlbId) && !hasCustomLogo) {
     wrapper.appendChild(makeExpansionPlaceholder(team, size));
   }
 
+  if (draggable && team && team.isExpansion && typeof openLogoHovercard === 'function') {
+    const editBtn = document.createElement('button');
+    editBtn.type = 'button';
+    editBtn.className = 'logo-edit-btn';
+    editBtn.title = 'Edit name, logo & colors';
+    editBtn.innerHTML = '<i class="fa-solid fa-pencil"></i>';
+    editBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openLogoHovercard(team.id, editBtn);
+    });
+    wrapper.appendChild(editBtn);
+  }
+
   if (draggable) wrapper.dataset.dynamicRivals = '1';
-  wrapper.addEventListener('mouseenter', () => showRivalTooltip(wrapper, teamId));
+  wrapper.addEventListener('mouseenter', () => showRivalTooltip(wrapper, wrapper.dataset.teamId));
   wrapper.addEventListener('mouseleave', () => hideRivalTooltip());
   wrapper.addEventListener('click', () => {
-    if (window.innerWidth < 768) toggleMobileRivals(wrapper, teamId);
+    if (window.innerWidth < 768) toggleMobileRivals(wrapper, wrapper.dataset.teamId);
   });
 
   return wrapper;
@@ -452,7 +480,15 @@ function makeLogoOnly(teamId, size = 36) {
   const team = getTeamById(teamId);
   const wrap = document.createElement('div');
   wrap.style.cssText = `width:${size}px;height:${size}px;display:flex;align-items:center;justify-content:center;flex-shrink:0;`;
-  if (team && team.mlbId && !team.isExpansion) {
+  const hasCustomLogo = team && team.isExpansion && team.logo && (team.logo.light || team.logo.dark);
+  if (hasCustomLogo) {
+    const img = document.createElement('img');
+    img.src = team.logo.light || team.logo.dark;
+    img.alt = team.city || team.id;
+    img.setAttribute('draggable', 'false');
+    img.style.cssText = `width:${size}px;height:${size}px;object-fit:contain;`;
+    wrap.appendChild(img);
+  } else if (team && team.mlbId && !team.isExpansion) {
     const img = document.createElement('img');
     img.src = getLocalLogoUrl(team.id, false);
     img.alt = team.id;
