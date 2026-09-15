@@ -29,9 +29,9 @@ function step2Show() {
 
 // ── City Selector ────────────────────────────────────────────────────────────
 
-let _moreCitiesExpanded = false;
 let _cityPickerOpen = false;
 let _citySearchQuery = '';
+let _moreCitiesExpanded = false;
 
 function cityPillLabel(city) {
   return city.state ? `${city.city}, ${city.state}` : city.city;
@@ -105,35 +105,31 @@ function renderCitySelector() {
     >${cityPillLabel(city)}</button>`;
   };
 
-  const likelyPills = EXPANSION_CITIES.filter(c => c.tier === 'likely').map(pillFor).join('');
-
-  const moreCities = EXPANSION_CITIES.filter(c => c.tier === 'more')
+  // One alphabetized list (no separate "Other cities" section) — "more
+  // cities" just adds/removes the extra tier from that same list rather than
+  // opening a second panel. Search only makes sense once the full list is
+  // showing, so it's hidden in the "fewer" (likely-only) view.
+  const visibleCities = EXPANSION_CITIES.filter(c => c.tier === 'likely' || _moreCitiesExpanded)
     .sort((a, b) => a.city.localeCompare(b.city));
-  const toggleLabel = _moreCitiesExpanded ? '− Fewer cities' : `+ More cities (${moreCities.length})`;
+  const trimmedQuery = _moreCitiesExpanded ? _citySearchQuery.trim().toLowerCase() : '';
+  const filtered = trimmedQuery ? visibleCities.filter(c => cityMatchesSearch(c, trimmedQuery)) : visibleCities;
+  const pills = filtered.length
+    ? filtered.map(pillFor).join('')
+    : `<span class="city-search-empty">No cities match "${_escapeAttr(_citySearchQuery)}"</span>`;
+
+  const moreCount = EXPANSION_CITIES.filter(c => c.tier !== 'likely').length;
+  const toggleLabel = _moreCitiesExpanded ? '− Fewer cities' : `+ More cities (${moreCount})`;
   const toggleBtn = `<button type="button" class="city-pill more-cities-toggle" onclick="toggleMoreCities()">${toggleLabel}</button>`;
 
-  let morePanel = '';
-  if (_moreCitiesExpanded) {
-    const trimmedQuery = _citySearchQuery.trim().toLowerCase();
-    const filtered = trimmedQuery ? moreCities.filter(c => cityMatchesSearch(c, trimmedQuery)) : moreCities;
-    const pills = filtered.length
-      ? filtered.map(pillFor).join('')
-      : `<span class="city-search-empty">No cities match "${_escapeAttr(_citySearchQuery)}"</span>`;
-    const searchRow = `<div class="city-search-row">
-      <i class="fa-solid fa-magnifying-glass city-search-icon"></i>
-      <input type="text" id="city-search-input" class="city-search-input" placeholder="Search other cities…"
-        value="${_escapeAttr(_citySearchQuery)}" oninput="onCitySearchInput(this.value)" />
-    </div>`;
-    morePanel = `<div class="more-cities-panel">
-      <div class="more-cities-group-label">Other cities</div>
-      ${searchRow}
-      <div class="more-cities-group-pills">${pills}</div>
-    </div>`;
-  }
+  const searchRow = _moreCitiesExpanded ? `<div class="city-search-row">
+    <i class="fa-solid fa-magnifying-glass city-search-icon"></i>
+    <input type="text" id="city-search-input" class="city-search-input" placeholder="Search cities…"
+      value="${_escapeAttr(_citySearchQuery)}" oninput="onCitySearchInput(this.value)" />
+  </div>` : '';
 
   const footer = closeBtn ? `<div class="city-picker-footer">${closeBtn}</div>` : '';
 
-  container.innerHTML = `<div class="city-pill-row">${likelyPills}${toggleBtn}</div>${morePanel}${footer}`;
+  container.innerHTML = `${searchRow}<div class="city-pill-row">${pills}${toggleBtn}</div>${footer}`;
 
   if (searchWasFocused) {
     const input = document.getElementById('city-search-input');

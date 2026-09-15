@@ -510,8 +510,9 @@ body {
 .city-pill-row { display: flex; flex-wrap: wrap; gap: 8px; }
 
 .city-search-row {
+  flex: 1 0 100%;
   position: relative;
-  margin: 8px 0 10px;
+  margin-bottom: 10px;
 }
 .city-search-icon {
   position: absolute;
@@ -577,17 +578,6 @@ body {
   font-size: 0.82rem;
   margin-bottom: 12px;
 }
-
-.more-cities-panel { margin-top: 12px; }
-.more-cities-group-label {
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: #999;
-  margin-bottom: 6px;
-}
-.more-cities-group-pills { display: flex; flex-wrap: wrap; gap: 8px; }
 
 /* ── Step 2 two-column layout (grid+pool left, map right) ──────────────── */
 #step2-content-layout {
