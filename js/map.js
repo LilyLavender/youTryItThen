@@ -32,21 +32,106 @@ function _loadGeoData() {
 const NEAR_BOUNDS = { north: 50, south: 22, west: -125, east: -66.5 };
 const FAR_MARGIN = 3; // degrees of breathing room around any far-flung pick
 
+// Alaska/Hawaii aren't broken out as separate features in the land-50m source
+// (it's one merged world landmass), so we classify each polygon piece by the
+// rough location of its centroid instead. Good enough to separate two specific,
+// far-apart regions from everything else.
+// lng > -168 excludes the Aleutian chain (which stretches on past -180) —
+// just the mainland body (plus Kodiak and other near-shore islands) is shown.
+function _isAlaskaLngLat(lng, lat) { return lat > 50 && lng < -130 && lng > -168; }
+function _isHawaiiLngLat(lng, lat) { return lat > 18 && lat < 23 && lng < -154 && lng > -161; }
+
+// Splits a MultiPolygon/Polygon land feature into {matched, rest} by a
+// (lng, lat) -> boolean predicate tested against each polygon's centroid.
+function _splitLandByPredicate(land, predicate) {
+  const geom = land && land.geometry;
+  let polygons;
+  if (!geom) polygons = [];
+  else if (geom.type === 'MultiPolygon') polygons = geom.coordinates;
+  else if (geom.type === 'Polygon') polygons = [geom.coordinates];
+  else polygons = [];
+
+  const matched = [], rest = [];
+  polygons.forEach(polyCoords => {
+    const feature = { type: 'Feature', geometry: { type: 'Polygon', coordinates: polyCoords } };
+    const [lng, lat] = d3.geoCentroid(feature);
+    (predicate(lng, lat) ? matched : rest).push(polyCoords);
+  });
+  return {
+    matched: { type: 'Feature', geometry: { type: 'MultiPolygon', coordinates: matched } },
+    rest: { type: 'Feature', geometry: { type: 'MultiPolygon', coordinates: rest } },
+  };
+}
+
+// Anchorage/Honolulu are drawn at a "moved" position near the WA/CA coasts
+// instead of their true, far-off location. Rather than an independent small
+// projection (which renders in isolation from the main map's zoom/pan and
+// never integrates with it), the whole classified landmass is translated in
+// (lng, lat) space so it lands on this anchor, then drawn through the SAME
+// main projection as everything else — so it scales, pans, and expands the
+// map's fitted bounds exactly like any other far-off expansion city (e.g.
+// San Juan). The approximate distortion this introduces (Albers isn't
+// optimized for these regions) is expected and fine for a stylized inset.
+// Both anchors push the map's fitted bounds out by exactly this much,
+// regardless of where each one actually renders (its own lat/lng/scale below)
+// — so the zoom level is identical whether Alaska, Hawaii, or both are
+// selected, instead of each independently (and differently) widening the view.
+const SHARED_FAR_BOUNDS_POINT = { lat: 34, lng: -128, margin: 0.5 };
+
+const DISPLAY_ANCHORS = {
+  // scale shrinks the landmass around its real reference point before the
+  // shift is applied, so the reference point itself doesn't move. Real
+  // mainland Alaska is roughly a fifth of the entire US by area, so drawn at
+  // true (equal-area) scale next to CONUS it dominates the map and clips off
+  // the edges — 0.55 keeps it recognizable but appropriately small. Hawaii's
+  // real size already reads fine at true scale, so it's left at 1.
+  ANC: { lat: 48, lng: -140, scale: 0.55, bounds: SHARED_FAR_BOUNDS_POINT },  // off the Washington coast
+  HON: { lat: 34, lng: -128, scale: 1, bounds: SHARED_FAR_BOUNDS_POINT },     // off the California coast
+};
+function getDisplayAnchor(cityId) {
+  return DISPLAY_ANCHORS[cityId] || null;
+}
+// The extraPoints entry to feed into _computeFitBounds for a given expansion
+// city — its display anchor's shared bounds point if it has one, its real
+// coordinates otherwise.
+function cityDisplayPoint(city) {
+  const anchor = getDisplayAnchor(city.id);
+  if (!anchor) return { lat: city.lat, lng: city.lng };
+  return anchor.bounds || null;
+}
+
+// Shrinks `feature` toward (refLng, refLat) by `scale`, then translates by
+// (dLng, dLat) — a point exactly at (refLng, refLat) always lands at
+// (refLng + dLng, refLat + dLat) regardless of scale, so the reference city's
+// own marker position is unaffected by how much its landmass is shrunk.
+function _shiftAndScaleGeometry(feature, refLng, refLat, dLng, dLat, scale = 1) {
+  const transform = ([lng, lat]) => [refLng + (lng - refLng) * scale + dLng, refLat + (lat - refLat) * scale + dLat];
+  const shiftRing = ring => ring.map(transform);
+  const geom = feature.geometry;
+  let coordinates;
+  if (geom.type === 'MultiPolygon') coordinates = geom.coordinates.map(poly => poly.map(shiftRing));
+  else if (geom.type === 'Polygon') coordinates = geom.coordinates.map(shiftRing);
+  else coordinates = geom.coordinates;
+  return { type: 'Feature', geometry: { type: geom.type, coordinates } };
+}
+
+
 function _computeFitBounds(extraPoints = []) {
   let { north, south, west, east } = NEAR_BOUNDS;
   extraPoints.forEach(p => {
     if (p == null || p.lat == null || p.lng == null) return;
-    north = Math.max(north, p.lat + FAR_MARGIN);
-    south = Math.min(south, p.lat - FAR_MARGIN);
-    west  = Math.min(west,  p.lng - FAR_MARGIN);
-    east  = Math.max(east,  p.lng + FAR_MARGIN);
+    const margin = p.margin != null ? p.margin : FAR_MARGIN;
+    north = Math.max(north, p.lat + margin);
+    south = Math.min(south, p.lat - margin);
+    west  = Math.min(west,  p.lng - margin);
+    east  = Math.max(east,  p.lng + margin);
   });
   const expanded = north > NEAR_BOUNDS.north || south < NEAR_BOUNDS.south ||
                    west < NEAR_BOUNDS.west || east > NEAR_BOUNDS.east;
   return { north, south, west, east, expanded };
 }
 
-async function initMap(svgEl, width, height, zoomMult = 1.07, extraPoints = []) {
+async function initMap(svgEl, width, height, zoomMult = 1.07, extraPoints = [], regionFlags = {}) {
   const maskId = `land-mask-${++_mapInstanceCounter}`;
   const svg = d3.select(svgEl);
   svg.selectAll('*').remove();
@@ -57,7 +142,22 @@ async function initMap(svgEl, width, height, zoomMult = 1.07, extraPoints = []) 
     type: "FeatureCollection",
     features: countries.features.filter(f => [840, 124, 484].includes(+f.id))
   };
-  const land = topojson.feature(landTopo, landTopo.objects.land);
+  // land-50m's "land" object is a GeometryCollection (one big MultiPolygon
+  // geometry inside), so topojson.feature() hands back a FeatureCollection —
+  // unwrap to the single Feature so .geometry reads correctly below.
+  const worldLand = topojson.feature(landTopo, landTopo.objects.land).features[0];
+  // Hawaii is pulled out of the base landmass so it never shows at its true
+  // (off-canvas) position; it's drawn as a separate inset below, only when
+  // Honolulu is selected.
+  const { matched: hawaiiLand, rest: land } = _splitLandByPredicate(worldLand, _isHawaiiLngLat);
+  // Alaska can't be split out of `land` the same way: land-50m has no border
+  // between Alaska and Yukon/BC, so mainland Alaska is fused into the same
+  // polygon as the rest of the continent and a centroid-based split only ever
+  // catches disconnected islands (Kodiak etc.), not the mainland body. Pull it
+  // from the country-level USA polygon instead, which — being cut at the
+  // Canada border — already isolates a correctly-shaped mainland Alaska.
+  const usaFeature = countries.features.find(f => +f.id === 840);
+  const { matched: alaskaLand } = _splitLandByPredicate(usaFeature, _isAlaskaLngLat);
 
   const projection = d3.geoAlbers()
     .rotate([96, 0])
@@ -136,6 +236,31 @@ async function initMap(svgEl, width, height, zoomMult = 1.07, extraPoints = []) 
     .attr("stroke-width", 0.8)
     .attr("mask", `url(#${maskId})`);
 
+  // Alaska / Hawaii — drawn only when the matching expansion city is selected,
+  // translated (and, for Alaska, shrunk) to a "moved" position off the WA/CA
+  // coasts and rendered through the same main projection/pathGen as the rest
+  // of the map (see _shiftAndScaleGeometry/DISPLAY_ANCHORS above). displayShift
+  // lets renderMapTeams apply the same translation to the expansion marker
+  // itself (markers aren't shrunk — scale is 0 at the reference point).
+  const displayShift = {};
+  if (regionFlags.showAlaska) {
+    const real = EXPANSION_CITIES.find(c => c.id === 'ANC');
+    const anchor = DISPLAY_ANCHORS.ANC;
+    const dLng = anchor.lng - real.lng, dLat = anchor.lat - real.lat;
+    mapGroup.append("path").datum(_shiftAndScaleGeometry(alaskaLand, real.lng, real.lat, dLng, dLat, anchor.scale))
+      .attr("d", pathGen)
+      .attr("fill", "#e8e8e4").attr("stroke", "#b0b0b0").attr("stroke-width", 0.8);
+    displayShift.ANC = { dLng, dLat };
+  }
+  if (regionFlags.showHawaii) {
+    const real = EXPANSION_CITIES.find(c => c.id === 'HON');
+    const anchor = DISPLAY_ANCHORS.HON;
+    const dLng = anchor.lng - real.lng, dLat = anchor.lat - real.lat;
+    mapGroup.append("path").datum(_shiftAndScaleGeometry(hawaiiLand, real.lng, real.lat, dLng, dLat, anchor.scale))
+      .attr("d", pathGen)
+      .attr("fill", "#e8e8e4").attr("stroke", "#b0b0b0").attr("stroke-width", 0.8);
+    displayShift.HON = { dLng, dLat };
+  }
 
   const lakesGroup  = svg.append("g").attr("class", "lakes-layer");
   const blobGroup   = svg.append("g").attr("class", "blob-layer");
@@ -152,20 +277,28 @@ async function initMap(svgEl, width, height, zoomMult = 1.07, extraPoints = []) 
       .attr("stroke", "none");
   }
 
-  const state = { svg, projection, pathGen, blobGroup, labelGroup, markerGroup, defs, width, height };
+  const state = { svg, projection, pathGen, blobGroup, labelGroup, markerGroup, defs, width, height, displayShift };
   _mapState = state;
   return state;
 }
 
-function renderMapTeams(teamsWithDivisions, divisions) {
+function renderMapTeams(teamsWithDivisions, divisions, opts = {}) {
   if (!_mapState) return;
-  const { projection, blobGroup, labelGroup, markerGroup, width } = _mapState;
+  const { projection, blobGroup, labelGroup, markerGroup, width, displayShift } = _mapState;
 
   const divColorMap = buildDivColorMap(divisions);
 
-  const validTeams = teamsWithDivisions.filter(t => t.lat != null && t.lng != null);
+  let validTeams = teamsWithDivisions.filter(t => t.lat != null && t.lng != null);
+  if (opts.hideUnassigned) {
+    validTeams = validTeams.filter(t => !!getDivisionName(t.id, divisions));
+  }
   const projected = validTeams.map(t => {
-    const [x, y] = projection([t.lng, t.lat]);
+    // Anchorage/Honolulu's expansion team plots at its "moved" position (when
+    // shown) instead of its real, far-off coordinates — see DISPLAY_ANCHORS.
+    const shift = displayShift && t.expansionCityId && displayShift[t.expansionCityId];
+    const lng = shift ? t.lng + shift.dLng : t.lng;
+    const lat = shift ? t.lat + shift.dLat : t.lat;
+    const [x, y] = projection([lng, lat]);
     return { team: t, x, y };
   });
 
@@ -183,7 +316,15 @@ function renderMapTeams(teamsWithDivisions, divisions) {
   const imgMul = 1.2 + Math.max(0, Math.min(1, (width - 360) / 940)) * 0.6;
   const imgSize = Math.round(MARKER_R * imgMul);
 
-  projected.forEach(({ team, x, y }) => {
+  // Real teams paint on top of expansion teams by default (hovering still
+  // raises whichever marker is under the cursor via .raise() below).
+  const paintOrder = [...projected].sort((a, b) => {
+    const aReal = a.team.mlbId && !a.team.isExpansion;
+    const bReal = b.team.mlbId && !b.team.isExpansion;
+    return (aReal === bReal) ? 0 : (aReal ? 1 : -1);
+  });
+
+  paintOrder.forEach(({ team, x, y }) => {
     const g = markerGroup.append("g")
       .attr("class", "map-marker")
       .attr("transform", `translate(${x},${y})`)
@@ -384,10 +525,19 @@ function _thinHull(hull, minAngle = 0.2) {
   return result.length >= 3 ? result : hull;
 }
 
-function updateMapDivisions(divisions) {
+// Anchorage/Honolulu are the only expansion cities that unlock a map inset
+// (their real locations, AK and HI, are otherwise hidden — see initMap).
+function getRegionFlags(expansionCities) {
+  return {
+    showAlaska: expansionCities.some(c => c.id === 'ANC'),
+    showHawaii: expansionCities.some(c => c.id === 'HON'),
+  };
+}
+
+function updateMapDivisions(divisions, opts = {}) {
   if (!_mapState) return;
   const allTeams = buildTeamsForMap(divisions);
-  renderMapTeams(allTeams, divisions);
+  renderMapTeams(allTeams, divisions, opts);
 }
 
 function buildTeamsForMap(divisions) {

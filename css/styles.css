@@ -446,6 +446,7 @@ body {
 
 /* ── Step 2 city selector ─────────────────────────────────────────────── */
 .city-selector-card {
+  position: relative;
   background: var(--glass);
   backdrop-filter: blur(12px);
   border: 1px solid var(--glass-border);
@@ -507,6 +508,36 @@ body {
 .city-pill.disabled { opacity: 0.35; cursor: not-allowed; }
 
 .city-pill-row { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.city-search-row {
+  position: relative;
+  margin: 8px 0 10px;
+}
+.city-search-icon {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #999;
+  font-size: 0.8rem;
+  pointer-events: none;
+}
+.city-search-input {
+  width: 200px;
+  padding: 7px 11px 7px 30px;
+  border: 2px solid #ddd;
+  background: #fff;
+  font-family: var(--font);
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: #333;
+}
+.city-search-input:focus { outline: none; border-color: #999; }
+.city-search-empty { color: #999; font-size: 0.85rem; font-style: italic; padding: 5px 0; }
+
+/* Positioned into whatever empty space the card already has in its bottom-right
+   corner, rather than a flow row that would grow the card's height. */
+.city-picker-footer { position: absolute; right: 24px; bottom: 10px; }
 .more-cities-toggle { border-style: dashed; color: #777; }
 .more-cities-toggle:hover { border-color: #999; color: #111; background: #f8f8f8; }
 

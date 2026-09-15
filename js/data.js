@@ -111,12 +111,18 @@ const EXPANSION_CITIES = [
   // Mexico & Caribbean entries show state as country code to avoid clashing
   // abbreviations (Tijuana's Baja California = "BC", same as Vancouver's British
   // Columbia; Monterrey's Nuevo León = "NL", same as Newfoundland and Labrador).
+  { id: "ABQ",  city: "Albuquerque",    state: "NM", country: "US", tier: "more", lat: 35.08, lng: -106.65, mapAbbr: "ABQ" }, // AAA Isotopes
+  { id: "ANC",  city: "Anchorage",      state: "AK", country: "US", tier: "more", lat: 61.22, lng: -149.90  }, // shows Alaska on the map only when selected, see map.js insets
   { id: "BHM",  city: "Birmingham",     state: "AL", country: "US", tier: "more", lat: 33.52, lng: -86.81   }, // common airport/broadcast shorthand
+  { id: "BOI",  city: "Boise",         state: "ID", country: "US", tier: "more", lat: 43.62, lng: -116.20  },
   { id: "CGY",  city: "Calgary",        state: "AB", country: "CA", tier: "more", lat: 51.05, lng: -114.07  }, // NHL Flames
   { id: "CLB",  city: "Columbus",       state: "OH", country: "US", tier: "more", lat: 39.96, lng: -83.00,  mapAbbr: "CLB" }, // MLS Crew
   { id: "EDM",  city: "Edmonton",       state: "AB", country: "CA", tier: "more", lat: 53.55, lng: -113.49  }, // NHL Oilers
   { id: "ELP",  city: "El Paso",        state: "TX", country: "US", tier: "more", lat: 31.76, lng: -106.49, mapAbbr: "ELP" }, // AAA Chihuahuas
+  { id: "GB",   city: "Green Bay",      state: "WI", country: "US", tier: "more", lat: 44.51, lng: -88.02,  mapAbbr: "GB" }, // NFL Packers
+  { id: "GDL",  city: "Guadalajara",    state: "MX", country: "MX", tier: "more", lat: 20.66, lng: -103.35, mapAbbr: "GDL" }, // Liga MX Chivas
   { id: "HAL",  city: "Halifax",        state: "NS", country: "CA", tier: "more", lat: 44.65, lng: -63.57   }, // QMJHL Mooseheads
+  { id: "HON",  city: "Honolulu",       state: "HI", country: "US", tier: "more", lat: 21.31, lng: -157.86, mapAbbr: "HNL" }, // shows Hawaii on the map only when selected, see map.js insets
   { id: "IND",  city: "Indianapolis",   state: "IN", country: "US", tier: "more", lat: 39.77, lng: -86.16   }, // NFL Colts / NBA Pacers
   { id: "JAX",  city: "Jacksonville",   state: "FL", country: "US", tier: "more", lat: 30.33, lng: -81.66,  mapAbbr: "JAX" }, // NFL Jaguars
   { id: "LOU",  city: "Louisville",     state: "KY", country: "US", tier: "more", lat: 38.25, lng: -85.76   }, // NCAA Cardinals / AAA Bats
@@ -124,15 +130,19 @@ const EXPANSION_CITIES = [
   { id: "MEX",  city: "Mexico City",    state: "MX", country: "MX", tier: "more", lat: 19.43, lng: -99.13   }, // standard Mexico sports shorthand
   { id: "MTY",  city: "Monterrey",      state: "MX", country: "MX", tier: "more", lat: 25.69, lng: -100.32  }, // Liga MX Rayados/Tigres
   { id: "NOLA", city: "New Orleans",    state: "LA", country: "US", tier: "more", lat: 29.95, lng: -90.07,  mapAbbr: "NO" }, // common shorthand (Saints=NO, Pelicans=NOP)
+  { id: "OAK",  city: "Oakland",        state: "CA", country: "US", tier: "more", lat: 37.80, lng: -122.27  }, // free — ATH (Athletics) has no city-based id today
   { id: "OKC",  city: "Oklahoma City",  state: "OK", country: "US", tier: "more", lat: 35.47, lng: -97.52,  mapAbbr: "OKC" }, // NBA Thunder
   { id: "OMA",  city: "Omaha",          state: "NE", country: "US", tier: "more", lat: 41.26, lng: -95.94   }, // NCAA/College World Series shorthand
   { id: "OTT",  city: "Ottawa",         state: "ON", country: "CA", tier: "more", lat: 45.42, lng: -75.70   }, // NHL Senators
   { id: "QUE",  city: "Quebec City",    state: "QC", country: "CA", tier: "more", lat: 46.81, lng: -71.21   }, // former NHL Nordiques
+  { id: "RIC",  city: "Richmond",       state: "VA", country: "US", tier: "more", lat: 37.54, lng: -77.44   },
   { id: "SAS",  city: "San Antonio",    state: "TX", country: "US", tier: "more", lat: 29.42, lng: -98.49   }, // NBA Spurs
+  { id: "SJ",   city: "San Jose",       state: "CA", country: "US", tier: "more", lat: 37.34, lng: -121.89, mapAbbr: "SJ" }, // NHL Sharks; distinct from SJU (San Juan)
   { id: "SJU",  city: "San Juan",       state: "PR", country: "PR", tier: "more", lat: 18.40, lng: -66.06,  mapAbbr: "SJU" }, // used for MLB's 2003-04 Expos "home" games there
   { id: "SDQ",  city: "Santo Domingo",  state: "DR", country: "DO", tier: "more", lat: 18.49, lng: -69.93,  mapAbbr: "DOM" }, // standard airport/city shorthand
   { id: "SAV",  city: "Savannah",       state: "GA", country: "US", tier: "more", lat: 32.08, lng: -81.09   }, // Savannah Bananas
   { id: "TIJ",  city: "Tijuana",        state: "MX", country: "MX", tier: "more", lat: 32.51, lng: -117.02  }, // Liga MX Xolos
+  { id: "VIC",  city: "Victoria",       state: "BC", country: "CA", tier: "more", lat: 48.43, lng: -123.37  },
   { id: "WPG",  city: "Winnipeg",       state: "MB", country: "CA", tier: "more", lat: 49.90, lng: -97.14   }, // NHL Jets
 ];
 

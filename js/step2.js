@@ -31,9 +31,38 @@ function step2Show() {
 
 let _moreCitiesExpanded = false;
 let _cityPickerOpen = false;
+let _citySearchQuery = '';
 
 function cityPillLabel(city) {
   return city.state ? `${city.city}, ${city.state}` : city.city;
+}
+
+// Lets searches match a full state/province or country name, not just the
+// abbreviation stored on each city (e.g. "texas", "alberta", "mexico").
+const STATE_NAMES = {
+  AB: 'Alberta', AK: 'Alaska', AL: 'Alabama', BC: 'British Columbia', CA: 'California',
+  DR: 'Dominican Republic', FL: 'Florida', GA: 'Georgia', HI: 'Hawaii', ID: 'Idaho',
+  IN: 'Indiana', KY: 'Kentucky', LA: 'Louisiana', MB: 'Manitoba', MX: 'Mexico',
+  NC: 'North Carolina', NE: 'Nebraska', NM: 'New Mexico', NS: 'Nova Scotia', NY: 'New York',
+  OH: 'Ohio', OK: 'Oklahoma', ON: 'Ontario', OR: 'Oregon', PR: 'Puerto Rico', QC: 'Quebec',
+  TN: 'Tennessee', TX: 'Texas', UT: 'Utah', VA: 'Virginia', WI: 'Wisconsin',
+};
+const COUNTRY_NAMES = { CA: 'Canada', DO: 'Dominican Republic', MX: 'Mexico', PR: 'Puerto Rico', US: 'United States' };
+
+function cityMatchesSearch(city, query) {
+  const haystack = [
+    city.city, city.state, STATE_NAMES[city.state], city.country, COUNTRY_NAMES[city.country],
+  ].filter(Boolean).join(' ').toLowerCase();
+  return haystack.includes(query);
+}
+
+function onCitySearchInput(value) {
+  _citySearchQuery = value;
+  renderCitySelector();
+}
+
+function _escapeAttr(str) {
+  return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
 }
 
 function renderCitySelector() {
@@ -41,6 +70,7 @@ function renderCitySelector() {
   if (!container) return;
   const chosen = APP.step2State.expansionCities.map(c => c.id);
   const card = container.closest('.city-selector-card');
+  const searchWasFocused = document.activeElement && document.activeElement.id === 'city-search-input';
 
   if (APP.step2State.confirmed && chosen.length >= 2 && !_cityPickerOpen) {
     if (card) card.classList.add('city-card-confirmed');
@@ -64,7 +94,7 @@ function renderCitySelector() {
     ? `<button type="button" class="city-pill city-picker-close" onclick="toggleCityPicker()"><i class="fa-solid fa-check"></i> Done</button>`
     : '';
 
-  const likelyPills = EXPANSION_CITIES.filter(c => c.tier === 'likely').map(city => {
+  const pillFor = (city) => {
     const isChosen = chosen.includes(city.id);
     const isDisabled = !isChosen && capReached;
     return `<button
@@ -73,7 +103,9 @@ function renderCitySelector() {
       ${isDisabled ? 'disabled' : ''}
       onclick="toggleCity('${city.id}')"
     >${cityPillLabel(city)}</button>`;
-  }).join('');
+  };
+
+  const likelyPills = EXPANSION_CITIES.filter(c => c.tier === 'likely').map(pillFor).join('');
 
   const moreCities = EXPANSION_CITIES.filter(c => c.tier === 'more')
     .sort((a, b) => a.city.localeCompare(b.city));
@@ -82,33 +114,46 @@ function renderCitySelector() {
 
   let morePanel = '';
   if (_moreCitiesExpanded) {
-    const pills = moreCities.map(city => {
-      const isChosen = chosen.includes(city.id);
-      const isDisabled = !isChosen && capReached;
-      return `<button
-        class="city-pill ${isChosen ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}"
-        data-city-id="${city.id}"
-        ${isDisabled ? 'disabled' : ''}
-        onclick="toggleCity('${city.id}')"
-      >${cityPillLabel(city)}</button>`;
-    }).join('');
-
+    const trimmedQuery = _citySearchQuery.trim().toLowerCase();
+    const filtered = trimmedQuery ? moreCities.filter(c => cityMatchesSearch(c, trimmedQuery)) : moreCities;
+    const pills = filtered.length
+      ? filtered.map(pillFor).join('')
+      : `<span class="city-search-empty">No cities match "${_escapeAttr(_citySearchQuery)}"</span>`;
+    const searchRow = `<div class="city-search-row">
+      <i class="fa-solid fa-magnifying-glass city-search-icon"></i>
+      <input type="text" id="city-search-input" class="city-search-input" placeholder="Search other cities…"
+        value="${_escapeAttr(_citySearchQuery)}" oninput="onCitySearchInput(this.value)" />
+    </div>`;
     morePanel = `<div class="more-cities-panel">
       <div class="more-cities-group-label">Other cities</div>
+      ${searchRow}
       <div class="more-cities-group-pills">${pills}</div>
     </div>`;
   }
 
-  container.innerHTML = `<div class="city-pill-row">${likelyPills}${toggleBtn}${closeBtn}</div>${morePanel}`;
+  const footer = closeBtn ? `<div class="city-picker-footer">${closeBtn}</div>` : '';
+
+  container.innerHTML = `<div class="city-pill-row">${likelyPills}${toggleBtn}</div>${morePanel}${footer}`;
+
+  if (searchWasFocused) {
+    const input = document.getElementById('city-search-input');
+    if (input) {
+      input.focus();
+      const len = input.value.length;
+      input.setSelectionRange(len, len);
+    }
+  }
 }
 
 function toggleMoreCities() {
   _moreCitiesExpanded = !_moreCitiesExpanded;
+  if (!_moreCitiesExpanded) _citySearchQuery = '';
   renderCitySelector();
 }
 
 function toggleCityPicker() {
   _cityPickerOpen = !_cityPickerOpen;
+  if (!_cityPickerOpen) _citySearchQuery = '';
   renderCitySelector();
 }
 
@@ -142,6 +187,7 @@ function toggleCity(cityId) {
 
   if (newCities.length === 2) {
     APP.confirmExpansionCities();
+    _citySearchQuery = '';
     renderCitySelector();
     showBuilder();
   } else {
@@ -338,8 +384,12 @@ async function renderStep2Map() {
     wrapper.innerHTML = '';
     wrapper.appendChild(svgEl);
     _mapState = null;
-    const extraPoints = APP.step2State.expansionCities.map(c => ({ lat: c.lat, lng: c.lng }));
-    _step2MapState = await initMap(svgEl, w, h, isMobile ? 1.07 : 1.15, extraPoints);
+    // Anchorage/Honolulu contribute their "moved" display position (not their
+    // real, far-off coordinates) so the map's bounds expand to fit them
+    // exactly like any other far expansion city — see cityDisplayPoint/initMap.
+    const extraPoints = APP.step2State.expansionCities.map(cityDisplayPoint);
+    const regionFlags = getRegionFlags(APP.step2State.expansionCities);
+    _step2MapState = await initMap(svgEl, w, h, isMobile ? 1.07 : 1.15, extraPoints, regionFlags);
     _step2MapInited = true;
   } else {
     _mapState = _step2MapState;
